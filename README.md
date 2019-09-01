@@ -21,7 +21,7 @@ This community data connector is written in JavaScript and supports the followin
 
 # Installation
 
-This is a Community (aka Open Source Connector, but it has not yet been published by Google as a public connector in the [GDS connector repository](https://datastudio.google.com/data).
+This is a community connector, but it has not yet been published by Google as a public connector in the [GDS connector repository](https://datastudio.google.com/data).
 
 To use the connector for your own use you can install the code in the src folder and install it using the [GDS deployment procedures](https://developers.google.com/datastudio/connector/deploy).
 
