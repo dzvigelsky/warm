@@ -20,6 +20,8 @@
 // Further developed and restructured by Dennis Yoseph Zvigelsky (https://github.com/dzvigelsky) for NewPath Consulting Inc.
 // Contact NewPath Consulting for support at https://www.newpathconsulting.com
 
+// Version 1.0
+
 
 // Google Connector Functions, called and logged
 
