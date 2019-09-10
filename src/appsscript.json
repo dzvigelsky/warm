@@ -19,6 +19,7 @@
   },
   "urlFetchWhitelist": [
     "https://api.wildapricot.org/",
+    "https://oauth.wildapricot.org/",
     "https://newpathconsulting.com/"
   ]
 }
