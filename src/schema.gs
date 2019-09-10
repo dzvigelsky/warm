@@ -124,7 +124,7 @@ var WASchema = {
       label: "Membership Enabled",
       dataType: "BOOLEAN",
       semantics: {
-        conceptType: "METRIC",
+        conceptType: "DIMENSION",
         semanticType: "BOOLEAN"
       }
     },
@@ -133,7 +133,7 @@ var WASchema = {
       label: "Admin",
       dataType: "BOOLEAN",
       semantics: {
-        conceptType: "METRIC",
+        conceptType: "DIMENSION",
         semanticType: "BOOLEAN"
       }
     },
