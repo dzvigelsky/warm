@@ -277,7 +277,9 @@ var WASchema = {
       label: "Balance",
       dataType: "NUMBER",
       semantics: {
-        conceptType: "DIMENSION"
+        conceptType: "DIMENSION",
+        semanticGroup: "CURRENCY",
+        semanticType: "CURRENCY_CAD"
       }
     },
     {
@@ -285,7 +287,9 @@ var WASchema = {
       label: "Total donated",
       dataType: "NUMBER",
       semantics: {
-        conceptType: "DIMENSION"
+        conceptType: "DIMENSION",
+        semanticGroup: "CURRENCY",
+        semanticType: "CURRENCY_CAD"
       }
     },
     {
