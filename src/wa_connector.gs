@@ -127,6 +127,10 @@ wa_connector.getData = function(request) {
     });
     rows.push({ values: row });
   } else if (request.configParams.resource == "members") { // MEMBER Endpoint
+    var accountsEndpoint = 
+      API_PATHS.accounts + account.Id;
+    
+    var accounts = _fetchAPI(accountsEndpoint, token);
     var membersEndpoint = // API url with various parameters
       API_PATHS.accounts +
       account.Id +
@@ -137,9 +141,11 @@ wa_connector.getData = function(request) {
       selectedDimensionsMetrics.forEach(function(field) {
 
         switch (field.name) { // Since we are iterating, then every possible field for the endpoint will be pushed to row list.
-          case "Id":
-            if(typeof member.Id === 'undefined') row.push("");
-            else row.push(member.Id);
+          case "AccountIdMain":
+            row.push(accounts.Id.toString());
+            break;
+          case "MemberId":
+            row.push(member.Id.toString());
             break;
           case "FirstName":
             if(typeof member.FirstName === 'undefined') row.push("");
@@ -429,6 +435,10 @@ wa_connector.getData = function(request) {
     });
   }
   else if(request.configParams.resource == "membershipLevels"){ // Membership Level, To be completed
+    var accountsEndpoint = 
+      API_PATHS.accounts + account.Id;
+    
+    var accounts = _fetchAPI(accountsEndpoint, token);
     var membershipLevelsEndpoint =
       API_PATHS.accounts +
       account.Id +
@@ -438,6 +448,9 @@ wa_connector.getData = function(request) {
        var row = [];
        selectedDimensionsMetrics.forEach(function(field) {
         switch (field.name) {
+          case "AccountIdMain1":
+            row.push(accounts.Id.toString());
+            break;
           case "Id":
             if(typeof memberLevel.Id === 'undefined') row.push("");
             else row.push(memberLevel.Id);
@@ -462,6 +475,10 @@ wa_connector.getData = function(request) {
     });
   }
   else if(request.configParams.resource == "event"){ // EVENT REGISTRATIONS, To be completed
+    var accountsEndpoint = 
+      API_PATHS.accounts + account.Id;
+    var accounts = _fetchAPI(accountsEndpoint, token);
+    
     var eventsEndpoint =
       API_PATHS.accounts +
       account.Id +
@@ -471,6 +488,9 @@ wa_connector.getData = function(request) {
        var row = [];
        selectedDimensionsMetrics.forEach(function(field) {
         switch (field.name) {
+          case "AccountIdMain2":
+            row.push(accounts.Id.toString());
+            break;
           case "Id":
             if(typeof event.Id === 'undefined') row.push("");
             else row.push(event.Id);
@@ -528,6 +548,11 @@ wa_connector.getData = function(request) {
   else if(request.configParams.resource == "auditLog"){ // AUDIT LOG, To be completed
      var startDate = request.configParams.auditLogStartDate;
      var endDate = request.configParams.auditLogEndDate;
+     
+     var accountsEndpoint = 
+      API_PATHS.accounts + account.Id;
+     var accounts = _fetchAPI(accountsEndpoint, token);
+    
      var auditLogEndpoint =
       API_PATHS.accounts +
       account.Id +
@@ -540,7 +565,10 @@ wa_connector.getData = function(request) {
       var row = [];
       selectedDimensionsMetrics.forEach(function(field) {
         switch(field.name){
-          case "ContactId":
+         case "AccountIdMain3":
+            row.push(accounts.Id.toString());
+            break;
+         case "ContactId":
             if(typeof AuditItem.Contact === 'undefined') row.push("");
             else row.push(AuditItem.Contact.Id);
             break;
@@ -577,6 +605,11 @@ wa_connector.getData = function(request) {
   }
   else if(request.configParams.resource == "invoices"){ // INVOICES, To be completed
      var top = request.configParams.invoicesTop;
+     
+     var accountsEndpoint = 
+      API_PATHS.accounts + account.Id;
+     var accounts = _fetchAPI(accountsEndpoint, token);
+     
      var accountsEndpoint =
       API_PATHS.accounts +
       account.Id +
@@ -588,6 +621,9 @@ wa_connector.getData = function(request) {
       var row = [];
       selectedDimensionsMetrics.forEach(function(field) {
         switch(field.name){
+         case "AccountIdMain4":
+            row.push(accounts.Id.toString());
+            break;
          case "Id":
             if(typeof invoice.DocumentNumber === 'undefined') row.push("");
             else row.push(invoice.DocumentNumber);
@@ -615,13 +651,6 @@ wa_connector.getData = function(request) {
             row.push(invoice.OrderType);
             break;
          case "PublicMemo":
-//            var blank = invoice.PublicMemo;
-//            if (typeof invoice.PublicMemo === "string") {
-//             if (invoice.PublicMemo === "") {
-//               blank = null;
-//             }
-//            }
-//            row.push(blank);
             row.push(convertToNullString(invoice.PublicMemo));
             break;
          case "Memo":
