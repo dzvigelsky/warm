@@ -43,9 +43,18 @@ var WASchema = {
   ],
   // Members
   members: [
+  
     {
-      name: "Id",
-      label: "Member ID",
+      name: "MemberId",
+      label: "Member Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "AccountIdMain",
+      label: "Account Id",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -345,6 +354,14 @@ var WASchema = {
   // Membership Levels Endpoint
   membershipLevels: [
     {
+      name: "AccountIdMain1",
+      label: "Account Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
       name: "Id",
       label: "Membership Level Id",
       dataType: "NUMBER",
@@ -384,6 +401,14 @@ var WASchema = {
 
   // Event
   event: [
+    {
+      name: "AccountIdMain2",
+      label: "Account Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
     {
       name: "Id",
       label: "Event ID",
@@ -464,6 +489,14 @@ var WASchema = {
   // AuditLog
   auditLog: [
     {
+      name: "AccountIdMain3",
+      label: "Account Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
       name: "ContactId",
       label: "Contact ID",
       dataType: "NUMBER",
@@ -525,6 +558,14 @@ var WASchema = {
   ],
   // INVOICES
   invoices: [
+    {
+      name: "AccountIdMain4",
+      label: "Account Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
     {
       name: "Id",
       label: "Invoice Number",
