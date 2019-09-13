@@ -29,7 +29,7 @@ To use the connector for your own use you can do one of 2 things:
 or
 * Install the code in the /src folder and install it using the [GDS deployment procedures](https://developers.google.com/datastudio/connector/deploy).
 
-## Deploy a Community Connector for personal use
+## Install a copy of Wild Apricot Reports Manager personal use and improvement
 
 1.  Visit [Google Apps Script](https://script.google.com/) and create a new
     project.
