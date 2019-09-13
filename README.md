@@ -1,4 +1,4 @@
-# Google Data Studio Connector for Wild Apricot
+# Wild Apricot Reports Manager
 
 # Project Description
 Wild Apricot is the #1 rated Membership Management platform that enables membership-based organizations to manage their contact database and all members transactions with ease. The system has many modules including events, membership renewals, donations and an online store. It also enables administrators to customize their contact and member database. Members and administrators are able to manipulate data such as membership status, event registration, online payments with ease.
@@ -25,11 +25,13 @@ This is a community connector, but it has not yet been published by Google as a 
 
 To use the connector for your own use you can do one of 2 things:
 
-* Create your data source with [this shared link](https://datastudio.google.com/datasources/create?connectorId=AKfycbzCDTl62VlYZZd5NIqQ1RFmeUdG71a004N5dGqDyAORuZCQLkcSY2Ygsp4tGgEAbR4W)
+* Create your own Wild Apricot data source with [this connector link](https://datastudio.google.com/datasources/create?connectorId=AKfycbzCDTl62VlYZZd5NIqQ1RFmeUdG71a004N5dGqDyAORuZCQLkcSY2Ygsp4tGgEAbR4W)
+
 or
+
 * Install the code in the /src folder and install it using the [GDS deployment procedures](https://developers.google.com/datastudio/connector/deploy).
 
-## Install a copy of Wild Apricot Reports Manager personal use and improvement
+## Edit and Use your own copy of the Wild Apricot Reports Manager
 
 1.  Visit [Google Apps Script](https://script.google.com/) and create a new
     project.
@@ -45,7 +47,7 @@ or
 # Sample Dashboard (Google Data Studio)
 [Sample Wild Apricot Report in PDF](https://github.com/asirota/gds-wildapricot-connector/blob/master/images/Simple%20Wild%20Apricot%20Report%20in%20Google%20Data%20Studio.pdf)
 
-[Sample Wild Apricot Report in Google Data Studio (live)](https://datastudio.google.com/embed/reporting/1AvG9S97XRA7fE9QIaVAtMZ3QQG511wq6/page/LiZU)
+[Sample Wild Apricot Report in Google Data Studio (live)](https://datastudio.google.com/s/ia1L-H14C4U)
 
 
 Dashboards can be customized flexibly according to a report writers requirements using one or more data sources.
