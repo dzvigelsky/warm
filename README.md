@@ -23,13 +23,15 @@ This community data connector is written in JavaScript and supports the followin
 
 This is a community connector, but it has not yet been published by Google as a public connector in the [GDS connector repository](https://datastudio.google.com/data).
 
-To use the connector for your own use you can do one of 2 things:
+To use the connector you can perform one of 2 procedures:
 
 * Create your own Wild Apricot data source with [this connector link](https://datastudio.google.com/datasources/create?connectorId=AKfycbzCDTl62VlYZZd5NIqQ1RFmeUdG71a004N5dGqDyAORuZCQLkcSY2Ygsp4tGgEAbR4W)
 
 or
 
 * Install the code in the /src folder and install it using the [GDS deployment procedures](https://developers.google.com/datastudio/connector/deploy).
+
+After the data source is configured you will be asked for a [Wild Apricot API key](https://gethelp.wildapricot.com/en/articles/484). API keys can be created in the Wild Apricot administrative system under [Settings/Integrations/Authorized Applications](https://<yourwasubdomain.wildapricot.org>/admin/settings/integration/authorized-applications/)
 
 ## Edit and Use your own copy of the Wild Apricot Reports Manager
 
