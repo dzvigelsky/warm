@@ -28,68 +28,64 @@ var API_PATHS = { // Api path that will be called in the getData function
   };
 
 wa_connector.getConfig = function(request) { // code for getConfig function
-  var config = {
-    configParams: [
-      {
-        name: "apikey",
-        type: "TEXTINPUT",
-        displayName: "API Key",
-        helpText: "Please enter your Wild Apricot API Key:",
-        placeholder: "30 characters..."
-      },
-      {
-        name: "resource",
-        type: "SELECT_SINGLE",
-        displayName: "Select an Wild Apricot API endpoint.",
-        helpText: "The data connector will retrieve all data for the selected API endpoint.",
-        options: [
-          {
-            label: "Account",
-            value: "account"
-          },
-          {
-            label: "Members",
-            value: "members"
-          },
-          {
-            label: "Membership Level",
-            value: "membershipLevels"
-          },
-          {
-            label: "Event",
-            value: "event"
-          },
-          {
-            label: "AuditLog",
-            value: "auditLog"
-          },
-          {
-            label: "Invoices",
-            value: "invoices"
-          }
-        ]
-      },
-      {
-        name: "invoicesTop",
-        type: "TEXTINPUT",
-        displayName: "Latest Number of Invoices",
-        helpText: "Please enter the maximum number of invoice entries to be returned:"
-      },
-      {
-        name: "auditLogStartDate",
-        type: "TEXTINPUT",
-        displayName: "Start Date - AuditLog",
-        helpText: "Please enter the start date for your Audit Logs (YYYY/MM/DD):"
-      },
-      {
-        name: "auditLogEndDate",
-        type: "TEXTINPUT",
-        displayName: "End Date - AuditLog",
-        helpText: "Please enter the end date for your Audit Logs (YYYY/MM/DD):"
+  var configParams = request.configParams;
+  var isFirstRequest = configParams === undefined;
+  var cc = DataStudioApp.createCommunityConnector();
+  var config = cc.getConfig();
+  if (isFirstRequest) {
+    config.setIsSteppedConfig(true);
+  }
+  var apiKey = config.newTextInput()
+  .setId('apikey')
+  .setName('API key')
+  .setHelpText("Read https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.")
+  
+  var resource = config.newSelectSingle()
+    .setId('resource')
+    .setName('Select an Wild Apricot API endpoint.')
+    .setHelpText('The data connector will retrieve all data for the selected API endpoint.')
+    .setAllowOverride(false)
+    .addOption(config.newOptionBuilder().setLabel('Account').setValue('account'))
+    .addOption(config.newOptionBuilder().setLabel('Members').setValue('members'))
+    .addOption(config.newOptionBuilder().setLabel('Membership Level').setValue('membershipLevels'))
+    .addOption(config.newOptionBuilder().setLabel('Event').setValue('event'))
+    .addOption(config.newOptionBuilder().setLabel('AuditLog').setValue('auditLog'))
+    .addOption(config.newOptionBuilder().setLabel('Invoices').setValue('invoices'))
+  if(!isFirstRequest){
+    
+    if (configParams.apikey === undefined || configParams.apikey === null) {
+      cc.newUserError().setText('You must provide an Wild Apricot API key.').throwException();
+    }
+    
+    if (configParams.resource === undefined) {
+      cc.newUserError().setText('You must select an Wild Apricot API endpoint.').throwException();
+    }
+    switch(configParams.resource) {
+      case 'auditLog': {
+        var invoicesTop = config.newTextInput()
+          .setId('invoicesTop')
+          .setName('Latest Number of Invoices')
+          .setHelpText("Please enter the maximum number of invoice entries to be returned.")
+          .setPlaceholder("1000")
+        break;
       }
-    ]
-  };
-  return config;
+      case 'invoices': {
+        var auditLogStartDate = config.newTextInput()
+          .setId('auditLogStartDate')
+          .setName('Start Date - AuditLog')
+          .setHelpText("Please enter the start date for your Audit Logs (YYYY/MM/DD)")
+          .setPlaceholder("YYYY/MM/DD")
+      
+        var auditLogEndDate = config.newTextInput()
+          .setId('auditLogEndDate')
+          .setName('End Date - AuditLog')
+          .setHelpText("Please enter the end date for your Audit Logs (YYYY/MM/DD)")
+          .setPlaceholder("YYYY/MM/DD")
+        break;
+      }
+    }
+  }
+  return config.build();
 }
 
 wa_connector.getSchema = function(request) {
