@@ -32,18 +32,17 @@ wa_connector.getConfig = function(request) { // code for getConfig function
   var isFirstRequest = configParams === undefined;
   var cc = DataStudioApp.createCommunityConnector();
   var config = cc.getConfig();
-  if (isFirstRequest) {
-    config.setIsSteppedConfig(true);
-  }
+  
   var apiKey = config.newTextInput()
   .setId('apikey')
   .setName('API key')
+  .setAllowOverride(true)
   .setHelpText("Read https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.")
   
   var resource = config.newSelectSingle()
     .setId('resource')
     .setName('Select an Wild Apricot API endpoint.')
-    .setHelpText('The data connector will retrieve all data for the selected API endpoint.')
+    .setHelpText('The Wild Apricot Reports Manager will retrieve available data for the selected API endpoint.')
     .setAllowOverride(false)
     .addOption(config.newOptionBuilder().setLabel('Account').setValue('account'))
     .addOption(config.newOptionBuilder().setLabel('Members').setValue('members'))
@@ -51,41 +50,23 @@ wa_connector.getConfig = function(request) { // code for getConfig function
     .addOption(config.newOptionBuilder().setLabel('Event').setValue('event'))
     .addOption(config.newOptionBuilder().setLabel('AuditLog').setValue('auditLog'))
     .addOption(config.newOptionBuilder().setLabel('Invoices').setValue('invoices'))
-  if(!isFirstRequest){
-    
-    if (configParams.apikey === undefined || configParams.apikey === null) {
-      cc.newUserError().setText('You must provide an Wild Apricot API key.').throwException();
-    }
-    
-    if (configParams.resource === undefined) {
-      cc.newUserError().setText('You must select an Wild Apricot API endpoint.').throwException();
-    }
-    switch(configParams.resource) {
-      case 'auditLog': {
-        var invoicesTop = config.newTextInput()
-          .setId('invoicesTop')
-          .setName('Latest Number of Invoices')
-          .setHelpText("Please enter the maximum number of invoice entries to be returned.")
-          .setPlaceholder("1000")
-        break;
-      }
-      case 'invoices': {
-        var auditLogStartDate = config.newTextInput()
-          .setId('auditLogStartDate')
-          .setName('Start Date - AuditLog')
-          .setHelpText("Please enter the start date for your Audit Logs (YYYY/MM/DD)")
-          .setPlaceholder("YYYY/MM/DD")
-      
-        var auditLogEndDate = config.newTextInput()
-          .setId('auditLogEndDate')
-          .setName('End Date - AuditLog')
-          .setHelpText("Please enter the end date for your Audit Logs (YYYY/MM/DD)")
-          .setPlaceholder("YYYY/MM/DD")
-        break;
-      }
-    }
+  
+  var errInfo = config.newInfo()
+  .setId("errorLabel")
+  .setText("Wild Apricot API key and endpoint are required.\r\nRead https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.\r\nWhen selected and configured do not change endpoint, but instead create a new datasource for another endpoint.");
+  
+  var canProceedToNextStep = !isFirstRequest 
+    && configParams.resource !== undefined && configParams.resource !== null
+    && configParams.apikey !== undefined && configParams.apikey !== null;
+  
+  if(!canProceedToNextStep) {
+    config.setIsSteppedConfig(true);
+  } else if( configParams.resource === 'auditLog' || configParams.resource === 'invoices' ) {
+    config.setDateRangeRequired(true); 
   }
+  
   return config.build();
+
 }
 
 wa_connector.getSchema = function(request) {
@@ -117,6 +98,10 @@ wa_connector.getData = function(request) {
         case "PrimaryDomainName":
           row.push(account.PrimaryDomainName);
           break;
+        case "Name":
+          row.push(account.Name);
+          break;
+            
         default:
           //row.push("");
       }
@@ -542,8 +527,11 @@ wa_connector.getData = function(request) {
     });
   }
   else if(request.configParams.resource == "auditLog"){ // AUDIT LOG, To be completed
-     var startDate = request.configParams.auditLogStartDate;
-     var endDate = request.configParams.auditLogEndDate;
+     //var startDate = request.configParams.auditLogStartDate;
+     //var endDate = request.configParams.auditLogEndDate;
+    
+     var startDate = request.dateRange.startDate;
+     var endDate = request.dateRange.endDate;
      
      var accountsEndpoint = 
       API_PATHS.accounts + account.Id;
@@ -552,10 +540,8 @@ wa_connector.getData = function(request) {
      var auditLogEndpoint =
       API_PATHS.accounts +
       account.Id +
-      "/auditLogItems/?StartDate=" +
-      startDate +
-      "&EndDate=" +
-      endDate;
+      "/auditLogItems/?StartDate=" + startDate + "&EndDate=" + endDate;
+    
     var auditLogItems = _fetchAPI(auditLogEndpoint, token);
     auditLogItems.Items.forEach(function(AuditItem){
       var row = [];
@@ -567,6 +553,10 @@ wa_connector.getData = function(request) {
          case "ContactId":
             if(typeof AuditItem.Contact === 'undefined') row.push("");
             else row.push(AuditItem.Contact.Id);
+            break;
+          case "Timestamp":
+            if(typeof AuditItem.Contact === 'undefined') row.push("");
+            else row.push(AuditItem.Timestamp);
             break;
          case "FirstName":
             if(typeof AuditItem.FirstName === 'undefined') row.push("");
@@ -600,18 +590,16 @@ wa_connector.getData = function(request) {
     });
   }
   else if(request.configParams.resource == "invoices"){ // INVOICES, To be completed
-     var top = request.configParams.invoicesTop;
+     //var top = request.configParams.invoicesTop;
+    
+     var startDate = request.dateRange.startDate;
+     var endDate = request.dateRange.endDate;
      
-     var accountsEndpoint = 
-      API_PATHS.accounts + account.Id;
+     var accountsEndpoint = API_PATHS.accounts + account.Id;
      var accounts = _fetchAPI(accountsEndpoint, token);
-     
-     var accountsEndpoint =
-      API_PATHS.accounts +
-      account.Id +
-      //"/invoices?unpaidOnly=false&idsOnly=false&StartDate=2005-01-03&EndDate=2030-03-03";
-      "/invoices?unpaidOnly=false&idsOnly=false&$top=" +
-      top;
+     var accountsEndpoint = API_PATHS.accounts + account.Id +
+      "/invoices?unpaidOnly=false&idsOnly=false&StartDate=" + startDate + "&EndDate=" + endDate;
+
     var invoices = _fetchAPI(accountsEndpoint, token);
     invoices.Invoices.forEach(function(invoice){
       var row = [];
@@ -698,37 +686,55 @@ function convertToNullString(string) {
 };
 
 function _getAccessToken(apikey) {
-  var scopeNames = "auto";
-
-  var authRequestParams = {
-    method: "POST",
-    headers: {
-      Authorization: "Basic " + Utilities.base64Encode("APIKEY" + ":" + apikey)
-    },
-    contentType: "application/x-www-form-urlencoded",
-    payload: Utilities.formatString(
-      "grant_type=%s&scope=%s",
-      "client_credentials",
-      scopeNames
-    )
-  };
-
-  var tokenJSON = UrlFetchApp.fetch(API_PATHS.auth, authRequestParams);
-  var tokenData = JSON.parse(tokenJSON);
-
-  return tokenData.access_token;
+  
+  try {
+    apikey = (apikey || "").trim()
+    var scopeNames = "auto";
+    
+    var authRequestParams = {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Utilities.base64Encode("APIKEY" + ":" + apikey)
+      },
+      contentType: "application/x-www-form-urlencoded",
+      payload: Utilities.formatString(
+        "grant_type=%s&scope=%s",
+        "client_credentials",
+        scopeNames
+      )
+    };
+    
+    var tokenJSON = UrlFetchApp.fetch(API_PATHS.auth, authRequestParams);
+    var tokenData = JSON.parse(tokenJSON);
+    
+    return tokenData.access_token;
+  } catch(e) {
+    DataStudioApp.createCommunityConnector()
+    .newUserError()
+    .setDebugText('DBG: Failed to get token by API key:' + e)
+    .setText('Wild Apricot API key is not valid. Please edit datasource and provide valid API key.')
+    .throwException();
+  }
 }
 
 function _fetchAPI(url, token) { // HTTP request
-  var requestParams = {
-    method: "GET",
-    headers: { Authorization: "Bearer " + token },
-    accept: "application/json"
-  };
-
-  var responseJSON = UrlFetchApp.fetch(url, requestParams); // request Params in order to fetch from API
-  return JSON.parse(responseJSON); // returns back from request, parses into Javascript object, ready to be used
-  console.log(responseJSON);
+  try {
+    var requestParams = {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token },
+      accept: "application/json"
+    };
+    
+    var responseJSON = UrlFetchApp.fetch(url, requestParams); // request Params in order to fetch from API
+    return JSON.parse(responseJSON); // returns back from request, parses into Javascript object, ready to be used
+    console.log(responseJSON);
+  } catch (e) {
+    DataStudioApp.createCommunityConnector()
+    .newUserError()
+    .setDebugText('DBG: Failed to fetch data from API: ' + e)
+    .setText('Wild Apricot API returned an error: ' + e)
+    .throwException();
+  }
 
 }
 
