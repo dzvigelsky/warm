@@ -39,6 +39,14 @@ var WASchema = {
         conceptType: "DIMENSION",
         semanticType: "URL"
       }
+    },
+     {
+      name: "Name",
+      label: "Account Name",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
     }
   ],
   // Members
@@ -287,7 +295,7 @@ var WASchema = {
       label: "Total donated",
       dataType: "NUMBER",
       semantics: {
-        conceptType: "DIMENSION",
+        conceptType: "METRIC",
         semanticGroup: "CURRENCY",
         semanticType: "CURRENCY_CAD"
       }
@@ -493,11 +501,29 @@ var WASchema = {
   // AuditLog
   auditLog: [
     {
+      name: "AuditLogId",
+      label: "Audit Log Id",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
       name: "AccountIdMain3",
       label: "Account Id",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "Timestamp",
+      label: "Audit Log Date",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticGroup: "DATE_AND_TIME",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
       }
     },
     {
@@ -550,14 +576,6 @@ var WASchema = {
       semantics: {
         conceptType: "DIMENSION"
       }
-    },
-    {
-      name: "AuditLogId",
-      label: "Audit Log Id",
-      dataType: "NUMBER",
-      semantics: {
-        conceptType: "DIMENSION"
-      }
     }
   ],
   // INVOICES
@@ -601,7 +619,10 @@ var WASchema = {
       label: "Paid Amount",
       dataType: "NUMBER",
       semantics: {
-        conceptType: "DIMENSION"
+        conceptType: "METRIC",
+        semanticGroup: "CURRENCY",
+        semanticType: "CURRENCY_CAD"
+
       }
     },
     {
@@ -659,7 +680,10 @@ var WASchema = {
       label: "Total Amount",
       dataType: "NUMBER",
       semantics: {
-        conceptType: "DIMENSION"
+        conceptType: "METRIC",
+        semanticGroup: "CURRENCY",
+        semanticType: "CURRENCY_CAD"
+
       }
     },
     {
