@@ -1,25 +1,24 @@
 {
+  "timeZone": "America/Toronto",
+  "dependencies": {
+  },
+  "urlFetchWhitelist": ["https://api.wildapricot.org/", "https://oauth.wildapricot.org/", "https://newpathconsulting.com/"],
   "dataStudio": {
     "name": "Wild Apricot Reports Manager",
-    "company": "NewPath Consulting Inc.",
-	"companyUrl": "http://www.newpathconsulting.com",
     "logoUrl": "http://www.newpathconsulting.com/images/logo.png",
+    "company": "NewPath Consulting Inc.",
+    "companyUrl": "http://www.newpathconsulting.com",
     "addonUrl": "http://www.newpathconsulting.com/warm",
     "supportUrl": "https://www.newpathconsulting.com/contact-us.html",
-    "description": "The Wild Apricot Reports Manager (aka WARM) is NewPath's custom reporting solution for Wild Apricot administrators who want an increased level of reporting flexibility and analytical power.",
-    "shortDescription": "Create custom reports and visualizations with your Wild Apricot site or network of sites.",
-    "privacyPolicyUrl": "https://www.newpathconsulting.com/privacy.html",
-    "termsOfServiceUrl": "https://github.com/asirota/gds-wildapricot-connector/blob/master/TERMS-OF-SERVICE.md",
-    "authType": ["KEY"],
-    "feeType": ["FREE_TRIAL"],
+    "description": "The Wild Apricot Reports Manager (aka WARM) is NewPath\u0027s custom reporting solution for Wild Apricot administrators who want an increased level of reporting flexibility and analytical power.",
     "sources": ["WILD_APRICOT"],
     "templates": {
       "default": "1AvG9S97XRA7fE9QIaVAtMZ3QQG511wq6"
-    }
-  },
-  "urlFetchWhitelist": [
-    "https://api.wildapricot.org/",
-    "https://oauth.wildapricot.org/",
-    "https://newpathconsulting.com/"
-  ]
+    },
+    "shortDescription": "Create custom reports and visualizations with your Wild Apricot site or network of sites.",
+    "authType": ["KEY"],
+    "feeType": ["FREE_TRIAL"],
+    "privacyPolicyUrl": "https://www.newpathconsulting.com/privacy.html",
+    "termsOfServiceUrl": "https://github.com/asirota/gds-wildapricot-connector/blob/master/TERMS-OF-SERVICE.md"
+  }
 }
