@@ -15,7 +15,8 @@ The code is maintained by [NewPath Consulting](https://www.newpathconsulting.com
 This community data connector is written in JavaScript and supports the following API calls.
 
 * Account
-* Members/Contacts
+* Contacts
+* Contact custom fields
 * Membership Levels
 * Events
 * Invoices
@@ -23,7 +24,7 @@ This community data connector is written in JavaScript and supports the followin
 
 # Installation
 
-This is a community connector, but it has not yet been published by Google as a public connector in the [GDS connector repository](https://datastudio.google.com/data).
+This is a community connector. This connector has been published as a Partner connector in the [GDS connector repository](https://datastudio.google.com/data?search=wild%20apricot).
 
 To use the connector you can perform one of 2 procedures:
 
@@ -73,3 +74,4 @@ Dashboards can be customized flexibly according to a report writers requirements
 *  v1.1 September 10 2019 - added AccountID to every endpoint to track which Wild Apricot account (eg site) is providing the data. Updated connector manifest file to include the necessary data for publication into partner directory
 * v1.1.1 September 13 2019 - added a new config parameter collection screen with API key validation and step-by-step collection of config parameters depending on the end point being used
 * v1.2 September 27 2019 - removed auditlog/invoice config parameters in favour of GDS built in date filter control, added error handling to the getData() call, enabled API key override at the report level, added Account Name dimension to Account endpoint, added Auditlog timestamp to auditlog endpoint, modified schema for members end point to make sure balances are in CAD currency and are a METRIC rather than DIMENSION, Google Partner Connector submitted and approved
+* v2.0 February 14 2020 - added support for Contact custom fields, tuning paging for optimizing Contact records for databases > 2,000 contacts, including archived contacts only, including members only
