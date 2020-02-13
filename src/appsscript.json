@@ -2,10 +2,6 @@
   "timeZone": "America/Toronto",
   "dependencies": {
   },
-  "webapp": {
-    "access": "ANYONE",
-    "executeAs": "USER_ACCESSING"
-  },
   "urlFetchWhitelist": ["https://api.wildapricot.org/", "https://oauth.wildapricot.org/", "https://newpathconsulting.com/"],
   "dataStudio": {
     "name": "Wild Apricot Reports Manager",
@@ -19,7 +15,7 @@
     "templates": {
       "default": "1AvG9S97XRA7fE9QIaVAtMZ3QQG511wq6"
     },
-    "shortDescription": "Create custom reports and visualizations with your Wild Apricot site or network of sites. v2 beta",
+    "shortDescription": "Create custom reports and visualizations with your Wild Apricot site or network of sites.",
     "authType": ["KEY"],
     "feeType": ["FREE_TRIAL"],
     "privacyPolicyUrl": "https://www.newpathconsulting.com/privacy.html",

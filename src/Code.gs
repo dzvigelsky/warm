@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------------------------------------------
 // Google Data Studio Community Data Connector for Wild Apricot
-// Copyright (c) 2018-20 NewPath Consulting Inc.
+// Copyright (c) 2018-19 NewPath Consulting
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 // Further developed and restructured by Dennis Yoseph Zvigelsky (https://github.com/dzvigelsky) for NewPath Consulting Inc.
 // Contact NewPath Consulting for support at https://www.newpathconsulting.com
 
-// Version 2.0
+// Version 1.0
 
 
 // Google Connector Functions, called and logged
