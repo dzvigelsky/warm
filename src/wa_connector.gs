@@ -1,6 +1,6 @@
 // -----------------------------------------------------------------------------------------------------------------
 // Google Data Studio Community Data Connector for Wild Apricot
-// Copyright (c) 2018-19 NewPath Consulting
+// Copyright (c) 2018-20 NewPath Consulting Inc.
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -20,12 +20,14 @@
 // Further developed and restructured by Dennis Yoseph Zvigelsky (https://github.com/dzvigelsky) for NewPath Consulting Inc.
 // Contact NewPath Consulting for support at https://www.newpathconsulting.com
 
+// Global Variables------------------
 var wa_connector = wa_connector || {}; // creates the connector Class, which will be called in Code.gs
 
 var API_PATHS = { // Api path that will be called in the getData function
     auth: "https://oauth.wildapricot.org/auth/token",
     accounts: "https://api.wildapricot.org/v2.1/accounts/"
   };
+// ----------------------------------
 
 wa_connector.getConfig = function(request) { // code for getConfig function
   var configParams = request.configParams;
@@ -41,23 +43,53 @@ wa_connector.getConfig = function(request) { // code for getConfig function
   
   var resource = config.newSelectSingle()
     .setId('resource')
-    .setName('Select an Wild Apricot API endpoint.')
-    .setHelpText('The Wild Apricot Reports Manager will retrieve available data for the selected API endpoint.')
-    .setAllowOverride(false)
+    .setName('Select Wild Apricot object')
+    .setHelpText('Wild Apricot Reports Manager will retrieve available data for the selected object through the API.')
+    .addOption(config.newOptionBuilder().setLabel('Contacts').setValue('contacts'))
+    .addOption(config.newOptionBuilder().setLabel('Contact custom fields').setValue('custom'))
     .addOption(config.newOptionBuilder().setLabel('Account').setValue('account'))
-    .addOption(config.newOptionBuilder().setLabel('Members').setValue('members'))
     .addOption(config.newOptionBuilder().setLabel('Membership Level').setValue('membershipLevels'))
     .addOption(config.newOptionBuilder().setLabel('Event').setValue('event'))
     .addOption(config.newOptionBuilder().setLabel('AuditLog').setValue('auditLog'))
     .addOption(config.newOptionBuilder().setLabel('Invoices').setValue('invoices'))
-  
+    
+  var paging = config.newSelectSingle()
+    .setId('Paging')
+    .setName('Select page size for Contacts')
+    .setHelpText('Set your paging size to 1000 (or less) to avoid timeouts when accessing more than 2000 contacts. Set paging size to 2000 (or more) to speed up reports when accessing less than 2000 contacts. When adding more than 3 reports per page, try to reduce page size to avoid timeouts.')
+    .setAllowOverride(true)
+    .addOption(config.newOptionBuilder().setLabel('100').setValue('100'))
+    .addOption(config.newOptionBuilder().setLabel('500').setValue('500'))
+    .addOption(config.newOptionBuilder().setLabel('1000').setValue('1000'))
+    .addOption(config.newOptionBuilder().setLabel('1500').setValue('1500'))
+    .addOption(config.newOptionBuilder().setLabel('2000').setValue('2000'))
+    .addOption(config.newOptionBuilder().setLabel('2500').setValue('2500'))
+    .addOption(config.newOptionBuilder().setLabel('3000').setValue('3000'))
+    .addOption(config.newOptionBuilder().setLabel('3500').setValue('3500'))
+    .addOption(config.newOptionBuilder().setLabel('4000').setValue('4000'))
+    
   var errInfo = config.newInfo()
   .setId("errorLabel")
-  .setText("Wild Apricot API key and endpoint are required.\r\nRead https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.\r\nWhen selected and configured do not change endpoint, but instead create a new datasource for another endpoint.");
+  .setText("Wild Apricot API key and object are required.\r\nRead https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.");
+  
+  
+  // checkboxes for isArchived and Membership
+  var archived_check = config.newCheckbox()
+  .setId("archived")
+  .setName('Include Archived contacts only')
+  .setAllowOverride(true)
+  .setHelpText("Retrieve only contacts that are archived, in either Contacts or Contact custom fields");
+  
+  var membership_check = config.newCheckbox()
+  .setId("membership")
+  .setName('Include Members only')
+  .setAllowOverride(true)
+  .setHelpText("Return only contacts that are members, in either Contacts or Contact custom field");
   
   var canProceedToNextStep = !isFirstRequest 
     && configParams.resource !== undefined && configParams.resource !== null
-    && configParams.apikey !== undefined && configParams.apikey !== null;
+    && configParams.apikey !== undefined && configParams.apikey !== null
+    && configParams.Paging !== undefined && configParams.Paging !== null;
   
   if(!canProceedToNextStep) {
     config.setIsSteppedConfig(true);
@@ -66,34 +98,116 @@ wa_connector.getConfig = function(request) { // code for getConfig function
   }
   
   return config.build();
+}
 
+// Written by Edmond @2019 for Community Connector v1.3, added in custom, dynamic schema that accounts for custom fields (custom request)
+function custom(request){
+  var cc = DataStudioApp.createCommunityConnector();
+  var token = _getAccessToken(request.configParams.apikey);
+  var account = _fetchAPI(API_PATHS.accounts, token)[0];
+  var contactfieldsEndpoint = API_PATHS.accounts + account.Id + "/contactfields?showSectionDividers=false";
+  var arr = [map_schema("account_id", "AccountId")];
+  var cfs = _fetchAPI(contactfieldsEndpoint, token);
+  cfs.forEach(function(cf){
+    if(cf.SystemCode.substring(0, 7) == "custom-" || cf.SystemCode == "FirstName" || cf.SystemCode == "LastName"){
+      console.log(cf.FieldType);
+      arr.push(map_schema(cf.FieldType, cf.FieldName));
+    }
+    else if(cf.SystemCode == "MemberId"){ // In the returned JSON, the field User ID has undefined field type. (use ID instead)
+      arr.push(map_schema("ID", cf.FieldName));
+    }
+  });
+  return arr;
+}
+
+// Replace spaces in field name with ""
+function format_field(fn_in){
+  fn_in = fn_in.replace(/\s/g, ""); // Remove space
+  return fn_in.replace(/[`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '').toString(); // Remove special characters
+}
+
+function map_schema(ft_in, fn_in){
+  var fn = format_field(fn_in); // format field name to meet GDS requirement
+  switch(ft_in){
+    case "RulesAndTerms":
+      var f_set = {};
+      var semantics = {};
+      semantics["conceptType"] = "DIMENSION";
+      semantics["semanticType"] = "BOOLEAN";
+      f_set["semantics"] = semantics;
+      f_set["name"] = fn;
+      f_set["label"] = fn_in //+ "---" + ft_in;
+      f_set["dataType"] = "BOOLEAN";
+      return f_set;
+    case "Date": // *****
+      var f_set = {};
+      var semantics = {};
+      semantics["conceptType"] = "DIMENSION";
+      semantics["semanticType"] = "YEAR_MONTH_DAY";
+      f_set["semantics"] = semantics;
+      f_set["name"] = fn;
+      f_set["label"] = fn_in //+ "---" + ft_in;
+      f_set["dataType"] = "STRING";
+      return f_set;
+    case "ID": case "account_id": case "ExtraChargeCalculation":
+      var f_set = {};
+      var semantics = {};
+      semantics["conceptType"] = "METRIC";
+      f_set["semantics"] = semantics;
+      f_set["name"] = fn;
+      f_set["label"] = fn_in //+ "---" + ft_in;
+      f_set["dataType"] = "NUMBER";
+      return f_set;
+    default: // Dropdown, Text, Picture (for now), MultilineText, MultipleChoice, RadioButtons, MultipleChoiceWithExtraCharge, RadioButtonsWithExtraCharge
+      var f_set = {};
+      var semantics = {};
+      semantics["conceptType"] = "DIMENSION";
+      f_set["semantics"] = semantics;
+      f_set["name"] = fn;
+      f_set["label"] = fn_in //+ "--- " + ft_in;
+      f_set["dataType"] = "STRING";
+      return f_set;
+  }
 }
 
 wa_connector.getSchema = function(request) {
+  if(request.configParams.resource == "custom"){
+    WASchema["custom"] = custom(request); 
+    return { schema: WASchema["custom"] };
+  }
   return { schema: WASchema[request.configParams.resource] };
 }
 
 wa_connector.getData = function(request) {
-
-  var schema = WASchema[request.configParams.resource];
-  console.log(schema);
-
-  var selectedDimensionsMetrics = _filterSelectedItems(schema, request.fields);
-  console.log(selectedDimensionsMetrics);
-
-  var token = _getAccessToken(request.configParams.apikey);
-  console.log(token);
-
-  var account = _fetchAPI(API_PATHS.accounts, token)[0];
-
+  // Dictionary mapping field name(keys) to field types(vals)
+  var field_maps = {};
+  // Account Id 
+  field_maps["AccountId"] = "account_id";
   var rows = [];
-
+  var schema = WASchema[request.configParams.resource];
+  var token = _getAccessToken(request.configParams.apikey);
+  var account = _fetchAPI(API_PATHS.accounts, token)[0];
+  if(request.configParams.resource == "custom"){
+    var contactfieldsEndpoint = API_PATHS.accounts + account.Id + "/contactfields?showSectionDividers=false";
+    var cfs = _fetchAPI(contactfieldsEndpoint, token);
+    cfs.forEach(function(cf){
+      if(cf.SystemCode.substring(0, 7) == "custom-" || cf.SystemCode == "FirstName" || cf.SystemCode == "LastName"){
+        field_maps[format_field(cf.FieldName)] = cf.FieldType;
+      }
+      else if(cf.SystemCode == "MemberId"){
+        field_maps[format_field(cf.FieldName)] = "ID1";
+      }
+    });
+    schema = custom(request);
+  }
+  var selectedDimensionsMetrics = _filterSelectedItems(schema, request.fields);
+//  Logger.log(selectedDimensionsMetrics);
   if (request.configParams.resource == "account") { //ACCOUNT
     var row = [];
     selectedDimensionsMetrics.forEach(function(field) {
       switch (field.name) {
         case "Id":
-          row.push(account.Id.toString());
+          row.push(account.Id);
           break;
         case "PrimaryDomainName":
           row.push(account.PrimaryDomainName);
@@ -101,324 +215,285 @@ wa_connector.getData = function(request) {
         case "Name":
           row.push(account.Name);
           break;
-            
         default:
-          //row.push("");
       }
     });
     rows.push({ values: row });
-  } else if (request.configParams.resource == "members") { // MEMBER Endpoint
-    var accountsEndpoint = 
-      API_PATHS.accounts + account.Id;
-    
+  } else if (request.configParams.resource == "contacts") { // MEMBER Endpoint
+    var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
-    var membersEndpoint = // API url with various parameters
-      API_PATHS.accounts +
-      account.Id +
-        "/Contacts?$async=false&$select='Status";
-    var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
-    members.Contacts.forEach(function(member) { // iterate through all the fields
-      var row = []; // create empty array to hold fields
-      selectedDimensionsMetrics.forEach(function(field) {
-
-        switch (field.name) { // Since we are iterating, then every possible field for the endpoint will be pushed to row list.
-          case "AccountIdMain":
-            row.push(accounts.Id.toString());
-            break;
-          case "MemberId":
-            row.push(member.Id.toString());
-            break;
-          case "FirstName":
-            if(typeof member.FirstName === 'undefined') row.push("");
-            else row.push(member.FirstName);
-            break;
-          case "LastName":
-            if(typeof member.LastName === 'undefined') row.push("");
-            else row.push(member.LastName);
-            break;
-          case "Email":
-            if(typeof member.Email === 'undefined') row.push("");
-            else row.push(member.Email);
-            break;
-          case "DisplayName":
-            if(typeof member.DisplayName === 'undefined') row.push("");
-            else row.push(member.DisplayName);
-            break;
-          case "Organization":
-            if(typeof member.Organization === 'undefined') row.push("");
-            row.push(member.Organization);
-            break;
-          case "MembershipLevelName":
-            if(typeof member.MembershipLevel === 'undefined') row.push("No Membership Level");
-            else row.push(member.MembershipLevel.Name);
-            break;
-          case "MembershipLevelId":
-            if(typeof member.MembershipLevel === 'undefined') row.push("No Membership Level");
-            else row.push(member.MembershipLevel.Id);
-            break;
-          case "MembershipEnabled":
-            row.push(member.MembershipEnabled);
-            break;
-          case "IsAccountAdministrator":
-            if(typeof member.IsAccountAdministrator === 'undefined') row.push("");
-            else row.push(member.IsAccountAdministrator);
-            break;
-          case "Status":
-            if(typeof member.MembershipLevel === 'undefined') row.push("Non-member");
-            else row.push(member.Status);
-            break;
-          case "TermsOfUseAccepted":
-            if(typeof member.TermsOfUseAccepted === 'undefined') row.push("");
-            else row.push(member.TermsOfUseAccepted);
-            break;
-          case "Active":
-            if (member.Status == "Active") row.push(true);
-            else row.push(false);
-            break;
-          case "Lapsed":
-            if (member.Status == "Lapsed") row.push(true);
-            else row.push(false);
-            break;
-          case "PendingNew":
-            if (member.Status == "PendingNew") row.push(true);
-            else row.push(false);
-            break;
-          case "PendingRenewal":
-            if (member.Status == "PendingRenewal") row.push(true);
-            else row.push(false);
-            break;
-          case "isArchived":
-
-            var isArchived = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "IsArchived") {
-                if (element.Value == true) {
-                  isArchived = true;
+    var skip = 0, count = 0;
+//    request.configParams.Paging = request.configParams.Paging == "ALL"? "4001" : request.configParams.Paging;
+    while (true){
+      var filter = request.configParams.archived? "'Archived' eq 'true'" : "'Archived' eq 'false'"; // if archived checkbox is true, returned only Archived records.
+      var filter = request.configParams.membership? filter+" AND 'Member' eq 'true'" : filter; // if membership checkbox is true, select only Members records, otherwise return all records.
+      var membersEndpoint = API_PATHS.accounts + account.Id + "/Contacts?$async=false&$filter="+ filter + "&$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
+      var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
+      console.log(membersEndpoint);
+      var n = members.Contacts.length;
+      count += 1;
+      console.log(count + " " + n);
+      members.Contacts.forEach(function(member) {
+        var row = []; // create empty array to hold fields
+        selectedDimensionsMetrics.forEach(function(field) {
+          switch (field.name) {
+              case "AccountIdMain":
+                row.push(accounts.Id);
+                break;
+              case "MemberId":
+                row.push(member.Id.toString());
+                break;
+              case "FirstName":
+                if(typeof member.FirstName === 'undefined') row.push(null);
+                else row.push(member.FirstName);
+                break;
+              case "LastName":
+                if(typeof member.LastName === 'undefined') row.push(null);
+                else row.push(member.LastName);
+                break;
+              case "Email":
+                if(typeof member.Email === 'undefined') row.push(null);
+                else row.push(member.Email);
+                break;
+              case "DisplayName":
+                if(typeof member.DisplayName === 'undefined') row.push(null);
+                else row.push(member.DisplayName);
+                break;
+              case "Organization":
+                if(typeof member.Organization === 'undefined') row.push(null);
+                row.push(member.Organization);
+                break;
+              case "MembershipLevelName":
+                if(typeof member.MembershipLevel === 'undefined') row.push(null);
+                else row.push(member.MembershipLevel.Name);
+                break;
+              case "MembershipLevelId":
+                if(typeof member.MembershipLevel === 'undefined') row.push(null);
+                else row.push(member.MembershipLevel.Id);
+                break;
+              case "MembershipEnabled":
+                row.push(member.MembershipEnabled);
+                break; 
+              case "IsAccountAdministrator":
+                if(typeof member.IsAccountAdministrator === 'undefined') row.push(null);
+                else row.push(member.IsAccountAdministrator);
+                break;
+              case "Status":
+                if(typeof member.MembershipLevel === 'undefined') row.push(null);
+                else row.push(member.Status);
+                break;
+              case "TermsOfUseAccepted":
+                if(typeof member.TermsOfUseAccepted === 'undefined') row.push(null);
+                else row.push(member.TermsOfUseAccepted);
+                break;
+              case "Active":
+                if (member.Status == "Active") row.push(true);
+                else row.push(false);
+                break;
+              case "Lapsed":
+                if (member.Status == "Lapsed") row.push(true);
+                else row.push(false);
+                break;
+              case "PendingNew":
+                if (member.Status == "PendingNew") row.push(true);
+                else row.push(false);
+                break;
+              case "PendingRenewal":
+                if (member.Status == "PendingRenewal") row.push(true);
+                else row.push(false);
+                break;
+              case "Groupparticipation":
+                var result = "";
+                member.FieldValues.forEach(function(e) {
+                  if (e.SystemCode == "Groups"){
+                    if (e.Value.length > 1){
+                      for(var j = 0; j < e.Value.Length; j++){
+                        result += (e.Value[j]["Label"] == undefined) ? null : e.Value[j]["Label"];
+                        result += (j==e.Value.Length - 1) ? "" : ", ";
+                      }
+                    }
+                    else if(e.Value.length == 1){
+                       result = e.Value[0]["Label"] ? e.Value[0]["Label"] : null;
+                    }
+                  }
+                });
+                row.push(result);
+                break;
+              case "isArchived":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "IsArchived"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                  }
                 }
-              }
-            });
-
-            row.push(isArchived);
-            break;
-          case "IsDonor":
-
-            var isDonor = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "IsDonor") {
-                if (element.Value == true) {
-                  isDonor = true;
+                break;
+              case "IsMember":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "IsMember"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(isDonor);
-            break;
-          case "IsEventAttendee":
-
-            var isEventAttendee = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "IsEventAttendee") {
-                if (element.Value == true) {
-                  isEventAttendee = true;
+                break;
+              case "IsSuspendedMember":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "IsSuspendedMember"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(isEventAttendee);
-            break;
-          case "IsMember":
-            var isMember = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "IsMember") {
-                if (element.Value == true) {
-                  isMember = true;
+                break;
+              case "ReceiveEventReminders":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "ReceiveEventReminders"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(isMember);
-            break;
-          case "IsSuspendedMember":
-            var isSuspendedMember = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "IsSuspendedMember") {
-                if (element.Value == true) {
-                  isSuspendedMember = true;
+                break;
+              case "ReceiveNewsletters":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "ReceiveEventReminders"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(isSuspendedMember);
-            break;
-          case "ReceiveEventReminders":
-            var receiveEventReminders = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "ReceiveEventReminders") {
-                if (element.Value == true) {
-                  receiveEventReminders = true;
+                break;
+              case "EmailDisabled":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "EmailDisabled"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(receiveEventReminders);
-            break;
-          case "ReceiveNewsletters":
-            var receiveNL = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "ReceiveNewsletters") {
-                if (element.Value == true) {
-                  receiveNL = true;
+                break;
+              case "ReceivingEmailsDisabled":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "ReceiveEventReminders"){
+                     if (member.FieldValues[i].Value == true) row.push(true);
+                     else row.push(false);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(receiveNL);
-            break;
-          case "EmailDisabled":
-            var emailD = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "EmailDisabled") {
-                if (element.Value == true) {
-                  emailD = true;
+                break;
+              case "Balance":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "Balance"){
+                     row.push(member.FieldValues[i].Value);
+                     break;
+                  }
                 }
-              }
-            });
-
-            row.push(emailD);
-            break;
-          case "RecievingEMailsDisabled":
-            var recievingEMD = false;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "RecievingEMailsDisabled") {
-                if (element.Value == true) {
-                  recievingEMD = true;
+                break;
+              case "TotalDonated": /////---------HERE
+                var totalD = 0;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "TotalDonated") {
+                    totalD = element.Value;
+                  }
+                });
+                row.push(totalD);
+                break;
+              case "LastUpdated":
+                var lastU = undefined;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "lastUpdated") {
+                    lastU = element.Value;
+                  }
+                });
+                row.push(lastU);
+                break;
+              case "LastUpdatedBy":
+                var lastUB = undefined;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "LastUpdatedBy") {
+                    lastUB = element.Value;
+                  }
+                });
+                row.push(lastUB);
+                break;
+              case "CreationDate":
+                var creationD = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "CreationDate") {
+                    creationD = element.Value;
+                  }
+                });
+                row.push(creationD);
+                break;
+              case "LastLoginDate":
+                var lastLD = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "LastLoginDate") {
+                    lastLD = element.Value;
+                  }
+                });
+                row.push(lastLD);
+                break;
+              case "AdminRole":
+                var adminR = "Not An Account Administrator";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "AdminRole") {
+                    if (element.Value.length != 0) {
+                      adminR = "Account Administrator (Full Access)";
+                    }
+                  }
+                });
+                row.push(adminR);
+                break;
+              case "Notes":
+                var notes = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "Notes") {
+                    notes = element.Value;
+                  }
+                });
+                row.push(notes);
+                break;
+              case "Phone":
+                var phone = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "Phone") {
+                    phone = element.Value;
+                  }
+                });
+                row.push(phone);
+                break;
+              case "IsEventAttendee":
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "IsEventAttendee"){
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                  }
                 }
-              }
-            });
-
-            row.push(recievingEMD);
-            break;
-          case "Balance":
-            var balance = 0;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "Balance") {
-                balance = element.Value;
-              }
-            });
-
-            row.push(balance);
-            break;
-          case "TotalDonated":
-            var totalD = 0;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "TotalDonated") {
-                totalD = element.Value;
-              }
-            });
-
-            row.push(totalD);
-            break;
-          case "LastUpdated":
-            var lastU = undefined;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "lastUpdated") {
-                lastU = element.Value;
-              }
-            });
-
-            row.push(lastU);
-            break;
-          case "LastUpdatedBy":
-            var lastUB = undefined;
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "LastUpdatedBy") {
-                lastUB = element.Value;
-              }
-            });
-
-            row.push(lastUB);
-            break;
-          case "CreationDate":
-            var creationD = "";
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "CreationDate") {
-                creationD = element.Value;
-              }
-            });
-
-            row.push(creationD);
-            break;
-          case "LastLoginDate":
-            var lastLD = "";
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "LastLoginDate") {
-                lastLD = element.Value;
-              }
-            });
-
-            row.push(lastLD);
-            break;
-          case "AdminRole":
-            var adminR = "Not An Account Administrator";
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "AdminRole") {
-                if (element.Value.length != 0) {
-                  adminR = "Account Administrator (Full Access)";
+                break;
+              case "isDonor":{
+                for(var i = 0; i < member.FieldValues.length; i++){
+                  if (member.FieldValues[i].SystemCode == "IsDonor"){
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                  }
                 }
+                break;
               }
-            });
-
-            row.push(adminR);
-            break;
-          case "Notes":
-            var notes = "";
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "Notes") {
-                notes = element.Value;
-              }
-            });
-
-            row.push(notes);
-            break;
-          case "Phone":
-            var phone = "";
-
-            member.FieldValues.forEach(function(element) {
-              if (element.SystemCode == "Phone") {
-                phone = element.Value;
-              }
-            });
-
-            row.push(phone);
-            break;
-          default:
-            //row.push("");
-        }
-      });
-      rows.push({ values: row }); // final response
-    });
+              default:
+                break;
+          }
+        });
+        rows.push({ values: row }); // final response
+      });// Since we are iterating, then every possible field for the endpoint will be pushed to row list.
+      
+        skip+=Number(request.configParams.Paging);
+      if(n < Number(request.configParams.Paging)){break;}
+    }
+    console.log("Number of API used: " + count);
   }
   else if(request.configParams.resource == "membershipLevels"){ // Membership Level, To be completed
-    var accountsEndpoint = 
-      API_PATHS.accounts + account.Id;
-    
+    var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
     var membershipLevelsEndpoint =
       API_PATHS.accounts +
@@ -430,70 +505,64 @@ wa_connector.getData = function(request) {
        selectedDimensionsMetrics.forEach(function(field) {
         switch (field.name) {
           case "AccountIdMain1":
-            row.push(accounts.Id.toString());
+            row.push(accounts.Id);
             break;
           case "Id":
-            if(typeof memberLevel.Id === 'undefined') row.push("");
+            if(typeof memberLevel.Id === 'undefined') row.push(null);
             else row.push(memberLevel.Id);
             break;
           case "Name":
-            if(typeof memberLevel.Name === 'undefined') row.push("");
+            if(typeof memberLevel.Name === 'undefined') row.push(null);
             else row.push(memberLevel.Name);
             break;
           case "MembershipFee":
-            if(typeof memberLevel.MembershipFee === 'undefined') row.push("");
+            if(typeof memberLevel.MembershipFee === 'undefined') row.push(null);
             else row.push(memberLevel.MembershipFee);
             break;
           case "Description":
-            if(typeof memberLevel.Description === 'undefined') row.push("N/A");
+            if(typeof memberLevel.Description === 'undefined') row.push(null);
             else row.push(memberLevel.Description);
             break;
           default:
-            //row.push("");
         }
       });
       rows.push({ values: row });
     });
   }
   else if(request.configParams.resource == "event"){ // EVENT REGISTRATIONS, To be completed
-    var accountsEndpoint = 
-      API_PATHS.accounts + account.Id;
+    var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
-    
-    var eventsEndpoint =
-      API_PATHS.accounts +
-      account.Id +
-        "/events";
+    var eventsEndpoint = API_PATHS.accounts + account.Id + "/events";
     var events = _fetchAPI(eventsEndpoint, token);
     events.Events.forEach(function(event){
        var row = [];
        selectedDimensionsMetrics.forEach(function(field) {
         switch (field.name) {
           case "AccountIdMain2":
-            row.push(accounts.Id.toString());
+            row.push(accounts.Id);
             break;
           case "Id":
-            if(typeof event.Id === 'undefined') row.push("");
+            if(typeof event.Id === 'undefined') row.push(null);
             else row.push(event.Id);
             break;
           case "Name":
-            if(typeof event.Name === 'undefined') row.push("");
+            if(typeof event.Name === 'undefined') row.push(null);
             else row.push(event.Name);
             break;
           case "StartDate":
-            if(typeof event.StartDate === 'undefined') row.push("");
+            if(typeof event.StartDate === 'undefined') row.push(null);
             else row.push(event.StartDate);
             break;
           case "EndDate":
-            if(typeof event.EndDate === 'undefined') row.push("");
+            if(typeof event.EndDate === 'undefined') row.push(null);
             else row.push(event.EndDate);
             break;
           case "Location":
-            if(typeof event.Location === 'undefined') row.push("");
+            if(typeof event.Location === 'undefined') row.push(null);
             else row.push(event.Location);
             break;
           case "Tags":
-            if(typeof event.Tags === 'undefined' || event.Tags.length == 0 ) {row.push("");}
+            if(typeof event.Tags === 'undefined' || event.Tags.length == 0 ) {row.push(null);}
             else{
             var input = "";
             for(var j in event.Tags){
@@ -508,39 +577,29 @@ wa_connector.getData = function(request) {
             }
             break;
           case "PendingRegistrationsCount":
-             if(typeof event.PendingRegistrationsCount === 'undefined') row.push("");
+             if(typeof event.PendingRegistrationsCount === 'undefined') row.push(null);
             else row.push(event.PendingRegistrationsCount);
              break;
           case "ConfirmedRegistrationsCount":
-            if(typeof event.ConfirmedRegistrationsCount === 'undefined') row.push("");
+            if(typeof event.ConfirmedRegistrationsCount === 'undefined') row.push(null);
             else row.push(event.ConfirmedRegistrationsCount);
             break;
           case "CheckedInAttendeesNumber":
-            if(typeof event.CheckedInAttendeesNumber === 'undefined') row.push("");
+            if(typeof event.CheckedInAttendeesNumber === 'undefined') row.push(null);
             else row.push(event.CheckedInAttendeesNumber);
             break;
           default:
-            //row.push("");
         }
       });
       rows.push({ values: row });
     });
   }
   else if(request.configParams.resource == "auditLog"){ // AUDIT LOG, To be completed
-     //var startDate = request.configParams.auditLogStartDate;
-     //var endDate = request.configParams.auditLogEndDate;
-    
-     var startDate = request.dateRange.startDate;
-     var endDate = request.dateRange.endDate;
-     
-     var accountsEndpoint = 
-      API_PATHS.accounts + account.Id;
+     var startDate = request.dateRange.startDate, endDate = request.dateRange.endDate;
+     var accountsEndpoint = API_PATHS.accounts + account.Id;
      var accounts = _fetchAPI(accountsEndpoint, token);
     
-     var auditLogEndpoint =
-      API_PATHS.accounts +
-      account.Id +
-      "/auditLogItems/?StartDate=" + startDate + "&EndDate=" + endDate;
+     var auditLogEndpoint = API_PATHS.accounts + account.Id + "/auditLogItems/?StartDate=" + startDate + "&EndDate=" + endDate;
     
     var auditLogItems = _fetchAPI(auditLogEndpoint, token);
     auditLogItems.Items.forEach(function(AuditItem){
@@ -548,22 +607,22 @@ wa_connector.getData = function(request) {
       selectedDimensionsMetrics.forEach(function(field) {
         switch(field.name){
          case "AccountIdMain3":
-            row.push(accounts.Id.toString());
+            row.push(accounts.Id);
             break;
          case "ContactId":
-            if(typeof AuditItem.Contact === 'undefined') row.push("");
+            if(typeof AuditItem.Contact === 'undefined') row.push(null);
             else row.push(AuditItem.Contact.Id);
             break;
           case "Timestamp":
-            if(typeof AuditItem.Contact === 'undefined') row.push("");
+            if(typeof AuditItem.Contact === 'undefined') row.push(null);
             else row.push(AuditItem.Timestamp);
             break;
          case "FirstName":
-            if(typeof AuditItem.FirstName === 'undefined') row.push("");
+            if(typeof AuditItem.FirstName === 'undefined') row.push(null);
             else row.push(AuditItem.FirstName);
             break;
          case "LastName":
-            if(typeof AuditItem.LastName === 'undefined') row.push("");
+            if(typeof AuditItem.LastName === 'undefined') row.push(null);
             else row.push(AuditItem.LastName);
             break;
          case "Organization":
@@ -571,15 +630,15 @@ wa_connector.getData = function(request) {
             else row.push(AuditItem.Organization);
             break;
          case "Email":
-            if(typeof AuditItem.Email === 'undefined') row.push("");
+            if(typeof AuditItem.Email === 'undefined') row.push(null);
             else row.push(AuditItem.Email);
             break;
          case "Message":
-            if(typeof AuditItem.Message === 'undefined') row.push("");
+            if(typeof AuditItem.Message === 'undefined') row.push(null);
             else row.push(AuditItem.Message);
             break;
          case "AuditLogId":
-            if(typeof AuditItem.Message === 'undefined') row.push("");
+            if(typeof AuditItem.Message === 'undefined') row.push(null);
             else row.push(AuditItem.Id);
             break;
          default:
@@ -591,11 +650,7 @@ wa_connector.getData = function(request) {
   }
   else if(request.configParams.resource == "invoices"){ // INVOICES, To be completed
      //var top = request.configParams.invoicesTop;
-    
-     var startDate = request.dateRange.startDate;
-     var endDate = request.dateRange.endDate;
-     
-     var accountsEndpoint = API_PATHS.accounts + account.Id;
+     var startDate = request.dateRange.startDate, endDate = request.dateRange.endDate;
      var accounts = _fetchAPI(accountsEndpoint, token);
      var accountsEndpoint = API_PATHS.accounts + account.Id +
       "/invoices?unpaidOnly=false&idsOnly=false&StartDate=" + startDate + "&EndDate=" + endDate;
@@ -606,29 +661,29 @@ wa_connector.getData = function(request) {
       selectedDimensionsMetrics.forEach(function(field) {
         switch(field.name){
          case "AccountIdMain4":
-            row.push(accounts.Id.toString());
+            row.push(account.Id);
             break;
          case "Id":
-            if(typeof invoice.DocumentNumber === 'undefined') row.push("");
+            if(typeof invoice.DocumentNumber === 'undefined') row.push(null);
             else row.push(invoice.DocumentNumber);
             break;
          case "Url":
-            if(typeof invoice.Url === 'undefined') row.push("");
+            if(typeof invoice.Url === 'undefined') row.push(null);
             else row.push(invoice.Url);
             break;
          case "IsPaid":
             row.push(invoice.IsPaid);
             break;
          case "PaidAmount":
-            if(typeof invoice.PaidAmount === 'undefined' || !invoice.PaidAmount) row.push("");
+            if(typeof invoice.PaidAmount === 'undefined' || !invoice.PaidAmount) row.push(null);
             else row.push(invoice.PaidAmount);
             break;
          case "ContactId":
-            if(typeof invoice.Contact === 'undefined') row.push("");
+            if(typeof invoice.Contact === 'undefined') row.push(null);
             else row.push(invoice.Contact.Id);
             break;
          case "CreatedDate":
-            if(typeof invoice.CreatedDate === 'undefined') row.push("");
+            if(typeof invoice.CreatedDate === 'undefined') row.push(null);
             else row.push(invoice.CreatedDate);
             break;
          case "OrderType":
@@ -657,7 +712,7 @@ wa_connector.getData = function(request) {
               row.push(eventRegistration.Event.Id);
             }
             else {
-              row.push("");
+              row.push(null);
             }
             break;
          default:
@@ -666,14 +721,106 @@ wa_connector.getData = function(request) {
       rows.push({ values: row });
     });
   }
-
-  console.info(schema);
-  console.info(rows);
-
+  else if(request.configParams.resource == "custom"){
+    var skip = 0, count = 0;
+       while (true){
+         var filter = request.configParams.archived? "'Archived' eq 'true'" : "'Archived' eq 'false'"; // if archived checkbox is true, returned only Archived records.
+         var filter = request.configParams.membership? filter+" AND 'Member' eq 'true'" : filter; // if membership checkbox is true, select only Members records, otherwise return all records.
+      
+          var membersEndpoint = API_PATHS.accounts + account.Id + "/Contacts?$async=false&"+ filter + "&$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
+          var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
+          var n = members.Contacts.length;
+          count += 1;
+          console.log(count + " " + n);
+          members.Contacts.forEach(function(member) {
+            var row = [], field_names = []; // formatted field names
+            field_names.push("AccountId");
+            for(var i = 0; i < member.FieldValues.length; i++){
+              field_names.push(format_field(member.FieldValues[i].FieldName));
+            }
+//            console.log(field_names);
+          
+            for(var i = 0; i < selectedDimensionsMetrics.length; i++){
+              if(field_names.indexOf(selectedDimensionsMetrics[i].name) <= -1){ row.push(null);}
+              else if(selectedDimensionsMetrics[i].name == "AccountId"){
+                row.push(account.Id);
+              }
+              else{
+                for(var j = 0; j < member.FieldValues.length; j++){
+                  if(format_field(member.FieldValues[j].FieldName) == selectedDimensionsMetrics[i].name){
+//                    console.log("field type:", field_maps[format_field(member.FieldValues[j].FieldName)])
+//                    console.log("field name type:", member.FieldValues[j].FieldName);
+//                    console.log(map_val(field_maps[format_field(member.FieldValues[j].FieldName)], member,j));
+                    if (format_field(member.FieldValues[j].FieldName) == "UserID"){
+                      console.log("field type:", field_maps[format_field(member.FieldValues[j].FieldName)])
+                    }
+                    row.push(map_val(field_maps[format_field(member.FieldValues[j].FieldName)], member,j));
+                    break;
+                  }
+                }
+              }
+            }
+            rows.push({ values: row }); 
+          });// Since we are iterating, then every possible field for the endpoint will be pushed to row list.
+          
+          skip+=Number(request.configParams.Paging);
+          if(n < Number(request.configParams.Paging)){break;} // exit when reached the end
+          console.log("Number of apis used: " + count);
+        }
+  }
+//  Logger.log(schema)
   return {
     schema: selectedDimensionsMetrics,
     rows: rows
   };
+}
+
+// Format date to meet GDS requirement.
+function format_date(d_in){
+  return d_in.substr(0, d_in.indexOf('T')); 
+}
+
+// Function to account for nested structure in Wild Apricot JSON response format.
+function map_val(ft_in, member_in, idx){
+  // Base case, function in development.
+  if(typeof(member_in.FieldValues[idx].Value) === 'undefined'|| member_in.FieldValues[idx].Value == "" || member_in.FieldValues[idx].Value == null) return null;
+  switch(ft_in){
+    case "ID":
+      return member_in.FieldValues[idx].Value ? member_in.FieldValues[idx].Value : null;
+    case "Dropdown":
+      return member_in.FieldValues[idx].Value.Label ? member_in.FieldValues[idx].Value.Label : null;
+    case "Picture":
+      return member_in.FieldValues[idx].Value.Url ? member_in.FieldValues[idx].Value.Url : null;
+    case "RadioButtonsWithExtraCharge":
+      return member_in.FieldValues[idx].Value.Label ? member_in.FieldValues[idx].Value.Label : null;
+    case "MultipleChoice":
+      result = "";
+      if(member_in.FieldValues[idx].Value.length > 0){ // comma delimited
+          no_comma_idx = member_in.FieldValues[idx].Value.length - 1; 
+          for(var i = 0; i < member_in.FieldValues[idx].Value.length; i++){
+             result += (member_in.FieldValues[idx].Value[i]["Label"]);
+             result += (i==no_comma_idx) ? "" : ", "; // Avoid adding comma for the last item
+          }
+      }
+      return (member_in.FieldValues[idx].Value.length > 0) ? result : null;
+    case "MultipleChoiceWithExtraCharge":
+      result = "";
+      if(member_in.FieldValues[idx].Value.length > 0){ // comma delimited
+          no_comma_idx = member_in.FieldValues[idx].Value.length - 1; 
+          for(var i = 0; i < member_in.FieldValues[idx].Value.length; i++){
+             result += (member_in.FieldValues[idx].Value[i]["Label"]);
+             result += (i==no_comma_idx) ? "" : ", "; // Avoid adding comma for the last item
+          }
+      }
+      return (member_in.FieldValues[idx].Value.length > 0) ? result : null;
+    case "RadioButtons":
+      return member_in.FieldValues[idx].Value.Label ? member_in.FieldValues[idx].Value.Label : null;
+    case "Date":
+      return format_date(member_in.FieldValues[idx].Value);
+    default: // Text, RulesAndTerms(Boolean), MultilineText, MultipleChoiceWithExtraCharge, ExtraChargeCalculations
+      if (typeof(member_in.FieldValues[idx].Value) === 'undefined'){return null;}
+      return member_in.FieldValues[idx].Value.Label ? member_in.FieldValues[idx].Value.Label : member_in.FieldValues[idx].Value;
+  }
 }
 
 function convertToNullString(string) {
@@ -727,7 +874,7 @@ function _fetchAPI(url, token) { // HTTP request
     
     var responseJSON = UrlFetchApp.fetch(url, requestParams); // request Params in order to fetch from API
     return JSON.parse(responseJSON); // returns back from request, parses into Javascript object, ready to be used
-    console.log(responseJSON);
+//    console.log(responseJSON);
   } catch (e) {
     DataStudioApp.createCommunityConnector()
     .newUserError()
@@ -740,7 +887,6 @@ function _fetchAPI(url, token) { // HTTP request
 
 function _filterSelectedItems(schema, selectedFields) {
   var dimensionsAndMetrics = [];
-
   selectedFields.forEach(function(field) {
     for (var i = 0; i < schema.length; i++) {
       if (schema[i].name === field.name) {
@@ -749,7 +895,6 @@ function _filterSelectedItems(schema, selectedFields) {
       }
     }
   });
-
   return dimensionsAndMetrics;
 }
 
@@ -827,15 +972,16 @@ wa_connector.stackDriverLogging = function(functionName, parameter) {
 
   if (logEnabled) {
     var paramString = JSON.stringify(parameter, null, 2); // creates a JSON string of the return from API
-    console.log([functionName, 'request', paramString]); // logs as a JSON object
+//    console.log([functionName, 'request', paramString]); // logs as a JSON object
   }
 
   var returnObject = wa_connector[functionName](parameter);
 
   if (logEnabled) {
     var returnString = JSON.stringify(returnObject, null, 2);
-    console.log([functionName, 'response', returnString]);
+//    console.log([functionName, 'response', returnString]);
   }
 
   return returnObject;
-};
+
+}
