@@ -58,6 +58,8 @@ After the data source is configured you will be asked for a [Wild Apricot API ke
 Dashboards can be customized flexibly according to a report writers requirements using one or more data sources.
     
 # References
+ [Lessons Learned: Building a Google Data Studio Partner Connector](https://www.newpathconsulting.com/2019/09/building-google-data-studio-partner-connector.html)
+ 
  [GDS Authentication Docs](https://developers.google.com/datastudio/connector/auth)
 
  [GDS Community Connector Docs](https://developers.google.com/datastudio/connector)

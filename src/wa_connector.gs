@@ -651,9 +651,9 @@ wa_connector.getData = function(request) {
   else if(request.configParams.resource == "invoices"){ // INVOICES, To be completed
      //var top = request.configParams.invoicesTop;
      var startDate = request.dateRange.startDate, endDate = request.dateRange.endDate;
-     var accounts = _fetchAPI(accountsEndpoint, token);
      var accountsEndpoint = API_PATHS.accounts + account.Id +
       "/invoices?unpaidOnly=false&idsOnly=false&StartDate=" + startDate + "&EndDate=" + endDate;
+     var accounts = _fetchAPI(accountsEndpoint, token);
 
     var invoices = _fetchAPI(accountsEndpoint, token);
     invoices.Invoices.forEach(function(invoice){
@@ -661,7 +661,7 @@ wa_connector.getData = function(request) {
       selectedDimensionsMetrics.forEach(function(field) {
         switch(field.name){
          case "AccountIdMain4":
-            row.push(account.Id);
+            row.push(accounts.Id);
             break;
          case "Id":
             if(typeof invoice.DocumentNumber === 'undefined') row.push(null);
