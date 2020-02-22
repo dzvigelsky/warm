@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------------------------------------------------------
 // Google Data Studio Community Data Connector for Wild Apricot
-// Copyright (c) 2018-19 NewPath Consulting
+// Copyright (c) 2018-20 NewPath Consulting Inc.
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -49,8 +49,8 @@ var WASchema = {
       }
     }
   ],
-  // Members
-  members: [
+  // Contacts (Previously Members)
+  contacts: [
   
     {
       name: "MemberId",
@@ -58,6 +58,15 @@ var WASchema = {
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "Groupparticipation",
+      label: "Group Participation",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "TEXT"
       }
     },
     {
@@ -510,7 +519,7 @@ var WASchema = {
     },
     {
       name: "AccountIdMain3",
-      label: "Account Id",
+      label: "User ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -582,7 +591,7 @@ var WASchema = {
   invoices: [
     {
       name: "AccountIdMain4",
-      label: "Account Id",
+      label: "User ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
