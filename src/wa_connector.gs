@@ -27,23 +27,29 @@ var API_PATHS = { // Api path that will be called in the getData function
     auth: "https://oauth.wildapricot.org/auth/token",
     accounts: "https://api.wildapricot.org/v2.1/accounts/"
   };
+
+var cc = DataStudioApp.createCommunityConnector();
 // ----------------------------------
 
 wa_connector.getConfig = function(request) { // code for getConfig function
   var configParams = request.configParams;
   var isFirstRequest = configParams === undefined;
-  var cc = DataStudioApp.createCommunityConnector();
   var config = cc.getConfig();
   
-  var apiKey = config.newTextInput()
-  .setId('apikey')
-  .setName('API key')
-  .setAllowOverride(true)
-  .setHelpText("Read https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.")
+  config.newTextInput()
+      .setId('apikey')
+      .setName('API key')
+      .setAllowOverride(true)
+      .setHelpText("Read https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.");
   
-  var resource = config.newSelectSingle()
+  config.newInfo()
+      .setId("apikeyErrorLabel")
+      .setText("Wild Apricot API key is required. Read https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.");
+  
+  config.newSelectSingle()
     .setId('resource')
     .setName('Select Wild Apricot object')
+    .setIsDynamic(true)
     .setHelpText('Wild Apricot Reports Manager will retrieve available data for the selected object through the API.')
     .addOption(config.newOptionBuilder().setLabel('Contacts').setValue('contacts'))
     .addOption(config.newOptionBuilder().setLabel('Contact custom fields').setValue('custom'))
@@ -51,50 +57,70 @@ wa_connector.getConfig = function(request) { // code for getConfig function
     .addOption(config.newOptionBuilder().setLabel('Membership Level').setValue('membershipLevels'))
     .addOption(config.newOptionBuilder().setLabel('Event').setValue('event'))
     .addOption(config.newOptionBuilder().setLabel('AuditLog').setValue('auditLog'))
-    .addOption(config.newOptionBuilder().setLabel('Invoices').setValue('invoices'))
+    .addOption(config.newOptionBuilder().setLabel('Invoices').setValue('invoices'));
+  
+  config.newInfo()
+      .setId("resourceErrorLabel")
+      .setText("Wild Apricot object is required.");
+
+  var shouldShowContactFields = !isFirstRequest && (configParams.resource === 'contacts' || configParams.resource === 'custom');
+  if (shouldShowContactFields) {
+    config.newSelectSingle()
+        .setId('Paging')
+        .setName('Select page size')
+        .setHelpText('Set your paging size to 1000 (or less) to avoid timeouts when accessing more than 2000 contacts. Set paging size to 2000 (or more) to speed up reports when accessing less than 2000 contacts. When adding more than 3 reports per page, try to reduce page size to avoid timeouts.')
+        .setAllowOverride(true)
+        .addOption(config.newOptionBuilder().setLabel('100').setValue('100'))
+        .addOption(config.newOptionBuilder().setLabel('500').setValue('500'))
+        .addOption(config.newOptionBuilder().setLabel('1000').setValue('1000'))
+        .addOption(config.newOptionBuilder().setLabel('1500').setValue('1500'))
+        .addOption(config.newOptionBuilder().setLabel('2000').setValue('2000'))
+        .addOption(config.newOptionBuilder().setLabel('2500').setValue('2500'))
+        .addOption(config.newOptionBuilder().setLabel('3000').setValue('3000'))
+        .addOption(config.newOptionBuilder().setLabel('3500').setValue('3500'))
+        .addOption(config.newOptionBuilder().setLabel('4000').setValue('4000'));
+  
+    config.newInfo()
+        .setId("PagingErrorLabel")
+        .setText("Page size is required.");
     
-  var paging = config.newSelectSingle()
-    .setId('Paging')
-    .setName('Select page size for Contacts')
-    .setHelpText('Set your paging size to 1000 (or less) to avoid timeouts when accessing more than 2000 contacts. Set paging size to 2000 (or more) to speed up reports when accessing less than 2000 contacts. When adding more than 3 reports per page, try to reduce page size to avoid timeouts.')
-    .setAllowOverride(true)
-    .addOption(config.newOptionBuilder().setLabel('100').setValue('100'))
-    .addOption(config.newOptionBuilder().setLabel('500').setValue('500'))
-    .addOption(config.newOptionBuilder().setLabel('1000').setValue('1000'))
-    .addOption(config.newOptionBuilder().setLabel('1500').setValue('1500'))
-    .addOption(config.newOptionBuilder().setLabel('2000').setValue('2000'))
-    .addOption(config.newOptionBuilder().setLabel('2500').setValue('2500'))
-    .addOption(config.newOptionBuilder().setLabel('3000').setValue('3000'))
-    .addOption(config.newOptionBuilder().setLabel('3500').setValue('3500'))
-    .addOption(config.newOptionBuilder().setLabel('4000').setValue('4000'))
+    config.newCheckbox()
+        .setId("archived")
+        .setName('Include Archived contacts')
+        .setAllowOverride(true)
+        .setHelpText("If checked, Archived contacts will be included in the report.");
     
-  var errInfo = config.newInfo()
-  .setId("errorLabel")
-  .setText("Wild Apricot API key and object are required.\r\nRead https://gethelp.wildapricot.com/en/articles/180 for instructions on creating an API key.");
+    config.newCheckbox()
+        .setId("membership")
+        .setName('Include Members only')
+        .setAllowOverride(true)
+        .setHelpText("If checked, only Members will be included in the report.");
+  }
   
+  var isResourceEmpty = isFirstRequest || configParams.resource === undefined || configParams.resource === null;
+  var isApiKeyEmpty = isFirstRequest || configParams.apikey === undefined || configParams.apikey === null;
+  var isPagingEmpty = isFirstRequest || configParams.Paging === undefined || configParams.Paging === null;
+  var canProceedToNextStep = !isApiKeyEmpty && !isResourceEmpty && (!shouldShowContactFields || (shouldShowContactFields && !isPagingEmpty));
   
-  // checkboxes for isArchived and Membership
-  var archived_check = config.newCheckbox()
-  .setId("archived")
-  .setName('Include Archived contacts only')
-  .setAllowOverride(true)
-  .setHelpText("Retrieve only contacts that are archived, in either Contacts or Contact custom fields");
-  
-  var membership_check = config.newCheckbox()
-  .setId("membership")
-  .setName('Include Members only')
-  .setAllowOverride(true)
-  .setHelpText("Return only contacts that are members, in either Contacts or Contact custom field");
-  
-  var canProceedToNextStep = !isFirstRequest 
-    && configParams.resource !== undefined && configParams.resource !== null
-    && configParams.apikey !== undefined && configParams.apikey !== null
-    && configParams.Paging !== undefined && configParams.Paging !== null;
-  
-  if(!canProceedToNextStep) {
+  if (canProceedToNextStep) {
+    if (configParams.resource === 'auditLog' || configParams.resource === 'invoices') {
+      config.setDateRangeRequired(true); 
+    }
+  } else {
     config.setIsSteppedConfig(true);
-  } else if( configParams.resource === 'auditLog' || configParams.resource === 'invoices' ) {
-    config.setDateRangeRequired(true); 
+
+    if (!isFirstRequest) {
+      if (isResourceEmpty) {
+        cc.newUserError()
+          .setDebugText("Wild Apricot object is required.");
+      } else if (isApiKeyEmpty) {
+        cc.newUserError()
+          .setDebugText("API key is required.");
+      } else if (isPagingEmpty) {
+        cc.newUserError()
+          .setDebugText("Page size is required.");
+      }
+    }
   }
   
   return config.build();
@@ -225,9 +251,15 @@ wa_connector.getData = function(request) {
     var skip = 0, count = 0;
 //    request.configParams.Paging = request.configParams.Paging == "ALL"? "4001" : request.configParams.Paging;
     while (true){
-      var filter = request.configParams.archived? "'Archived' eq 'true'" : "'Archived' eq 'false'"; // if archived checkbox is true, returned only Archived records.
-      var filter = request.configParams.membership? filter+" AND 'Member' eq 'true'" : filter; // if membership checkbox is true, select only Members records, otherwise return all records.
-      var membersEndpoint = API_PATHS.accounts + account.Id + "/Contacts?$async=false&$filter="+ filter + "&$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
+      var filter = request.configParams.archived ? "" : "Archived eq false"; // if archived checkbox is true return everything, otherwise exclude Archived contacts
+      if (request.configParams.membership) {  // if membership checkbox is true include only members, otherwise return everything
+        if (filter.length > 0) {
+          filter += " AND ";
+        }
+        filter += "Member eq true"
+      }
+
+      var membersEndpoint = API_PATHS.accounts + account.Id + "/Contacts?$async=false&$filter=" + filter + "&$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
       var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
       console.log(membersEndpoint);
       var n = members.Contacts.length;
@@ -724,8 +756,13 @@ wa_connector.getData = function(request) {
   else if(request.configParams.resource == "custom"){
     var skip = 0, count = 0;
        while (true){
-         var filter = request.configParams.archived? "'Archived' eq 'true'" : "'Archived' eq 'false'"; // if archived checkbox is true, returned only Archived records.
-         var filter = request.configParams.membership? filter+" AND 'Member' eq 'true'" : filter; // if membership checkbox is true, select only Members records, otherwise return all records.
+         var filter = request.configParams.archived ? "" : "Archived eq false"; // if archived checkbox is true return everything, otherwise exclude Archived contacts
+         if (request.configParams.membership) {  // if membership checkbox is true include only members, otherwise return everything
+           if (filter.length > 0) {
+             filter += " AND ";
+           }
+           filter += "Member eq true"
+         }
       
           var membersEndpoint = API_PATHS.accounts + account.Id + "/Contacts?$async=false&"+ filter + "&$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
           var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
