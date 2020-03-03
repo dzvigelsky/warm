@@ -22,21 +22,20 @@
 
 // Version 2.0
 
-
 // Google Connector Functions, called and logged
 
 function getConfig(request) {
-  return wa_connector.stackDriverLogging('getConfig', request);
+  return wa_connector.stackDriverLogging("getConfig", request);
 }
 
 function getSchema(request) {
-  return wa_connector.stackDriverLogging('getSchema', request);
+  return wa_connector.stackDriverLogging("getSchema", request);
 }
 
 function getData(request) {
-  return wa_connector.stackDriverLogging('getData', request);
+  return wa_connector.stackDriverLogging("getData", request);
 }
 
 function getAuthType(request) {
-  return wa_connector.stackDriverLogging('getAuthType', request);
+  return wa_connector.stackDriverLogging("getAuthType", request);
 }

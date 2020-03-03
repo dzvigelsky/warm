@@ -40,7 +40,7 @@ var WASchema = {
         semanticType: "URL"
       }
     },
-     {
+    {
       name: "Name",
       label: "Account Name",
       dataType: "STRING",
@@ -51,7 +51,6 @@ var WASchema = {
   ],
   // Contacts (Previously Members)
   contacts: [
-  
     {
       name: "MemberId",
       label: "Member Id",
@@ -172,7 +171,8 @@ var WASchema = {
         semanticType: "BOOLEAN"
       }
     },
-    { // define more schema depending on usage
+    {
+      // define more schema depending on usage
       name: "Active",
       label: "IsActiveMember",
       dataType: "BOOLEAN",
@@ -631,7 +631,6 @@ var WASchema = {
         conceptType: "METRIC",
         semanticGroup: "CURRENCY",
         semanticType: "CURRENCY_CAD"
-
       }
     },
     {
@@ -692,7 +691,6 @@ var WASchema = {
         conceptType: "METRIC",
         semanticGroup: "CURRENCY",
         semanticType: "CURRENCY_CAD"
-
       }
     },
     {
