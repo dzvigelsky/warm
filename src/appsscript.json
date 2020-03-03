@@ -1,12 +1,15 @@
 {
   "timeZone": "America/Toronto",
-  "dependencies": {
-  },
+  "dependencies": {},
   "webapp": {
     "access": "ANYONE",
     "executeAs": "USER_ACCESSING"
   },
-  "urlFetchWhitelist": ["https://api.wildapricot.org/", "https://oauth.wildapricot.org/", "https://newpathconsulting.com/"],
+  "urlFetchWhitelist": [
+    "https://api.wildapricot.org/",
+    "https://oauth.wildapricot.org/",
+    "https://newpathconsulting.com/"
+  ],
   "runtimeVersion": "V8",
   "dataStudio": {
     "name": "Wild Apricot Reports Manager",
