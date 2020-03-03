@@ -107,7 +107,10 @@ wa_connector.getConfig = function(request) {
     .setText("Wild Apricot object is required.");
 
   var shouldShowContactFields = !isFirstRequest && (configParams.resource === "contacts" || configParams.resource === "custom");
-  if (shouldShowContactFields) {
+  var shouldShowInvoicesFields = !isFirstRequest && configParams.resource === "invoices";
+  var shouldShowPageField = shouldShowContactFields || shouldShowInvoicesFields;
+
+  if (shouldShowPageField) {
     config
       .newSelectSingle()
       .setId("Paging")
@@ -170,7 +173,18 @@ wa_connector.getConfig = function(request) {
           .setLabel("4000")
           .setValue("4000")
       );
+  }
 
+  if (shouldShowInvoicesFields) {
+    config
+      .newCheckbox()
+      .setId("includeVoided")
+      .setName("Include voided invoices")
+      .setAllowOverride(true)
+      .setHelpText("If checked, voided invoices will be included in the report.");
+  }
+
+  if (shouldShowContactFields) {
     config
       .newInfo()
       .setId("PagingErrorLabel")
@@ -194,14 +208,14 @@ wa_connector.getConfig = function(request) {
   var isResourceEmpty = isFirstRequest || configParams.resource === undefined || configParams.resource === null;
   var isApiKeyEmpty = isFirstRequest || configParams.apikey === undefined || configParams.apikey === null;
   var isPagingEmpty = isFirstRequest || configParams.Paging === undefined || configParams.Paging === null;
-  var canProceedToNextStep =
-    !isApiKeyEmpty && !isResourceEmpty && (!shouldShowContactFields || (shouldShowContactFields && !isPagingEmpty));
+  var isDateRangeRequired = !isFirstRequest && (configParams.resource === "auditLog" || configParams.resource === "invoices");
+  var canProceedToNextStep = !isApiKeyEmpty && !isResourceEmpty && (!shouldShowPageField || (shouldShowPageField && !isPagingEmpty));
 
-  if (canProceedToNextStep) {
-    if (configParams.resource === "auditLog" || configParams.resource === "invoices") {
-      config.setDateRangeRequired(true);
-    }
-  } else {
+  if (isDateRangeRequired) {
+    config.setDateRangeRequired(true);
+  }
+
+  if (!canProceedToNextStep) {
     config.setIsSteppedConfig(true);
 
     if (!isFirstRequest) {
@@ -784,74 +798,90 @@ wa_connector.getData = function(request) {
       rows.push({ values: row });
     });
   } else if (request.configParams.resource == "invoices") {
-    // INVOICES, To be completed
-    //var top = request.configParams.invoicesTop;
-    var startDate = request.dateRange.startDate,
-      endDate = request.dateRange.endDate;
-    var accountsEndpoint =
-      API_PATHS.accounts + account.Id + "/invoices?unpaidOnly=false&idsOnly=false&StartDate=" + startDate + "&EndDate=" + endDate;
-    var accounts = _fetchAPI(accountsEndpoint, token);
+    var skip = 0,
+      count = 0;
 
-    var invoices = _fetchAPI(accountsEndpoint, token);
-    invoices.Invoices.forEach(function(invoice) {
-      var row = [];
-      selectedDimensionsMetrics.forEach(function(field) {
-        switch (field.name) {
-          case "AccountIdMain4":
-            row.push(accounts.Id);
-            break;
-          case "Id":
-            if (typeof invoice.DocumentNumber === "undefined") row.push(null);
-            else row.push(invoice.DocumentNumber);
-            break;
-          case "Url":
-            if (typeof invoice.Url === "undefined") row.push(null);
-            else row.push(invoice.Url);
-            break;
-          case "IsPaid":
-            row.push(invoice.IsPaid);
-            break;
-          case "PaidAmount":
-            if (typeof invoice.PaidAmount === "undefined" || !invoice.PaidAmount) row.push(null);
-            else row.push(invoice.PaidAmount);
-            break;
-          case "ContactId":
-            if (typeof invoice.Contact === "undefined") row.push(null);
-            else row.push(invoice.Contact.Id);
-            break;
-          case "CreatedDate":
-            if (typeof invoice.CreatedDate === "undefined") row.push(null);
-            else row.push(invoice.CreatedDate);
-            break;
-          case "OrderType":
-            row.push(invoice.OrderType);
-            break;
-          case "PublicMemo":
-            row.push(convertToNullString(invoice.PublicMemo));
-            break;
-          case "Memo":
-            row.push(convertToNullString(invoice.Memo));
-            break;
-          case "ContactName":
-            row.push(invoice.Contact.Name);
-            break;
-          case "Value":
-            row.push(invoice.Value);
-            break;
-          case "EventId":
-            if (invoice.OrderType === "EventRegistration") {
-              var eventRegistrationEndpoint = API_PATHS.accounts + account.Id + "/eventregistrations/" + invoice.EventRegistration.Id;
-              var eventRegistration = _fetchAPI(eventRegistrationEndpoint, token);
-              row.push(eventRegistration.Event.Id);
-            } else {
-              row.push(null);
-            }
-            break;
-          default:
-        }
+    while (true) {
+      var accountsEndpoint =
+        API_PATHS.accounts +
+        account.Id +
+        "/invoices?unpaidOnly=false&idsOnly=false&StartDate=" +
+        request.dateRange.startDate +
+        "&EndDate=" +
+        request.dateRange.endDate +
+        "&$includeVoided=" +
+        (request.configParams.includeVoided ? "true" : "false") +
+        "&$skip=" +
+        skip +
+        "&$top=" +
+        request.configParams.Paging;
+      var invoices = _fetchAPI(accountsEndpoint, token);
+
+      invoices.Invoices.forEach(function(invoice) {
+        var row = [];
+        selectedDimensionsMetrics.forEach(function(field) {
+          switch (field.name) {
+            case "AccountIdMain4":
+              row.push(invoices.Id);
+              break;
+            case "Id":
+              if (typeof invoice.DocumentNumber === "undefined") row.push(null);
+              else row.push(invoice.DocumentNumber);
+              break;
+            case "Url":
+              if (typeof invoice.Url === "undefined") row.push(null);
+              else row.push(invoice.Url);
+              break;
+            case "IsPaid":
+              row.push(invoice.IsPaid);
+              break;
+            case "PaidAmount":
+              if (typeof invoice.PaidAmount === "undefined" || !invoice.PaidAmount) row.push(null);
+              else row.push(invoice.PaidAmount);
+              break;
+            case "ContactId":
+              if (typeof invoice.Contact === "undefined") row.push(null);
+              else row.push(invoice.Contact.Id);
+              break;
+            case "CreatedDate":
+              if (typeof invoice.CreatedDate === "undefined") row.push(null);
+              else row.push(invoice.CreatedDate);
+              break;
+            case "OrderType":
+              row.push(invoice.OrderType);
+              break;
+            case "PublicMemo":
+              row.push(convertToNullString(invoice.PublicMemo));
+              break;
+            case "Memo":
+              row.push(convertToNullString(invoice.Memo));
+              break;
+            case "ContactName":
+              row.push(invoice.Contact.Name);
+              break;
+            case "Value":
+              row.push(invoice.Value);
+              break;
+            case "EventId":
+              if (invoice.OrderType === "EventRegistration") {
+                var eventRegistrationEndpoint = API_PATHS.accounts + account.Id + "/eventregistrations/" + invoice.EventRegistration.Id;
+                var eventRegistration = _fetchAPI(eventRegistrationEndpoint, token);
+                row.push(eventRegistration.Event.Id);
+              } else {
+                row.push(null);
+              }
+              break;
+            default:
+          }
+        });
+        rows.push({ values: row });
       });
-      rows.push({ values: row });
-    });
+
+      skip += Number(request.configParams.Paging);
+      if (invoices.Invoices.length < Number(request.configParams.Paging)) {
+        break;
+      }
+    }
   } else if (request.configParams.resource == "custom") {
     var skip = 0,
       count = 0;
