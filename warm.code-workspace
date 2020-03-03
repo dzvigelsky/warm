@@ -8,6 +8,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.associations": {
       "*.gs": "javascript"
-    }
+    },
+    "editor.formatOnSave": true
   }
 }
