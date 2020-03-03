@@ -809,7 +809,7 @@ wa_connector.getData = function(request) {
         request.dateRange.startDate +
         "&EndDate=" +
         request.dateRange.endDate +
-        "&$includeVoided=" +
+        "&includeVoided=" +
         (request.configParams.includeVoided ? "true" : "false") +
         "&$skip=" +
         skip +
