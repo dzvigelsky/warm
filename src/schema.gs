@@ -369,6 +369,67 @@ var WASchema = {
       semantics: {
         conceptType: "DIMENSION"
       }
+    },
+    {
+      name: "MemberSince",
+      label: "Member since",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
+      }
+    },
+    {
+      name: "RenewalDue",
+      label: "Renewal due",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
+      }
+    },
+    {
+      name: "RenewalDateLastChanged",
+      label: "Renewal date last changed",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
+      }
+    },
+    {
+      name: "LevelLastChanged",
+      label: "Level last changed",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
+      }
+    },
+    {
+      name: "AccessToProfileByOthers",
+      label: "Access to profile by others",
+      dataType: "BOOLEAN",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "BOOLEAN"
+      }
+    },
+    {
+      name: "MemberBundleIdOrEmail",
+      label: "Member bundle id or email",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "MemberRole",
+      label: "Member role",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
     }
   ],
 

@@ -26,7 +26,7 @@ var wa_connector = wa_connector || {}; // creates the connector Class, which wil
 var API_PATHS = {
   // Api path that will be called in the getData function
   auth: "https://oauth.wildapricot.org/auth/token",
-  accounts: "https://api.wildapricot.org/v2.1/accounts/"
+  accounts: "https://api.wildapricot.org/v2.2/accounts/"
 };
 
 var cc = DataStudioApp.createCommunityConnector();
@@ -542,7 +542,7 @@ wa_connector.getData = function(request) {
                 }
               }
               break;
-            case "TotalDonated": /////---------HERE
+            case "TotalDonated":
               var totalD = 0;
               member.FieldValues.forEach(function(element) {
                 if (element.SystemCode == "TotalDonated") {
@@ -624,13 +624,90 @@ wa_connector.getData = function(request) {
                 }
               }
               break;
-            case "isDonor": {
+            case "IsDonor": {
               for (var i = 0; i < member.FieldValues.length; i++) {
                 if (member.FieldValues[i].SystemCode == "IsDonor") {
                   if (member.FieldValues[i].Value == true) row.push(true);
                   else row.push(false);
                 }
               }
+              break;
+            }
+            case "MemberSince": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode === "MemberSince") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "RenewalDue": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode === "RenewalDue") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "RenewalDateLastChanged": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode === "RenewalDateLastChanged") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "LevelLastChanged": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode === "LevelLastChanged") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "AccessToProfileByOthers": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode == "AccessToProfileByOthers") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "MemberBundleIdOrEmail": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode == "BundleId") {
+                  value = member.FieldValues[i].Value;
+                  break;
+                }
+              }
+              row.push(value);
+              break;
+            }
+            case "MemberRole": {
+              var value = "";
+              for (var i = 0; i < member.FieldValues.length; i++) {
+                if (member.FieldValues[i].SystemCode == "MemberRole") {
+                  value = member.FieldValues[i].Value || "";
+                  break;
+                }
+              }
+              row.push(value);
               break;
             }
             default:
