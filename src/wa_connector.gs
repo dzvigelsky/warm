@@ -108,7 +108,9 @@ wa_connector.getConfig = function(request) {
 
   var shouldShowContactFields = !isFirstRequest && (configParams.resource === "contacts" || configParams.resource === "custom");
   var shouldShowInvoicesFields = !isFirstRequest && configParams.resource === "invoices";
-  var shouldShowPageField = shouldShowContactFields || shouldShowInvoicesFields;
+  var shouldShowAuditLogFields = !isFirstRequest && configParams.resource === "auditLog";
+  var shouldShowEventFields = !isFirstRequest && configParams.resource === "event";
+  var shouldShowPageField = shouldShowContactFields || shouldShowInvoicesFields || shouldShowAuditLogFields || shouldShowEventFields;
 
   if (shouldShowPageField) {
     config
@@ -680,123 +682,152 @@ wa_connector.getData = function(request) {
     });
   } else if (request.configParams.resource == "event") {
     // EVENT REGISTRATIONS, To be completed
+    var skip = 0,
+      count = 0;
     var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
-    var eventsEndpoint = API_PATHS.accounts + account.Id + "/events";
-    var events = _fetchAPI(eventsEndpoint, token);
-    events.Events.forEach(function(event) {
-      var row = [];
-      selectedDimensionsMetrics.forEach(function(field) {
-        switch (field.name) {
-          case "AccountIdMain2":
-            row.push(accounts.Id);
-            break;
-          case "Id":
-            if (typeof event.Id === "undefined") row.push(null);
-            else row.push(event.Id);
-            break;
-          case "Name":
-            if (typeof event.Name === "undefined") row.push(null);
-            else row.push(event.Name);
-            break;
-          case "StartDate":
-            if (typeof event.StartDate === "undefined") row.push(null);
-            else row.push(event.StartDate);
-            break;
-          case "EndDate":
-            if (typeof event.EndDate === "undefined") row.push(null);
-            else row.push(event.EndDate);
-            break;
-          case "Location":
-            if (typeof event.Location === "undefined") row.push(null);
-            else row.push(event.Location);
-            break;
-          case "Tags":
-            if (typeof event.Tags === "undefined" || event.Tags.length == 0) {
-              row.push(null);
-            } else {
-              var input = "";
-              for (var j in event.Tags) {
-                if (input == "") {
-                  input = event.Tags[j];
-                } else {
-                  input = input + ", " + event.Tags[j];
+
+    while (true) {
+      var eventsEndpoint = API_PATHS.accounts + account.Id + "/events?$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
+      var events = _fetchAPI(eventsEndpoint, token);
+      events.Events.forEach(function(event) {
+        var row = [];
+        selectedDimensionsMetrics.forEach(function(field) {
+          switch (field.name) {
+            case "AccountIdMain2":
+              row.push(accounts.Id);
+              break;
+            case "Id":
+              if (typeof event.Id === "undefined") row.push(null);
+              else row.push(event.Id);
+              break;
+            case "Name":
+              if (typeof event.Name === "undefined") row.push(null);
+              else row.push(event.Name);
+              break;
+            case "StartDate":
+              if (typeof event.StartDate === "undefined") row.push(null);
+              else row.push(event.StartDate);
+              break;
+            case "EndDate":
+              if (typeof event.EndDate === "undefined") row.push(null);
+              else row.push(event.EndDate);
+              break;
+            case "Location":
+              if (typeof event.Location === "undefined") row.push(null);
+              else row.push(event.Location);
+              break;
+            case "Tags":
+              if (typeof event.Tags === "undefined" || event.Tags.length == 0) {
+                row.push(null);
+              } else {
+                var input = "";
+                for (var j in event.Tags) {
+                  if (input == "") {
+                    input = event.Tags[j];
+                  } else {
+                    input = input + ", " + event.Tags[j];
+                  }
                 }
+                row.push(input);
               }
-              row.push(input);
-            }
-            break;
-          case "PendingRegistrationsCount":
-            if (typeof event.PendingRegistrationsCount === "undefined") row.push(null);
-            else row.push(event.PendingRegistrationsCount);
-            break;
-          case "ConfirmedRegistrationsCount":
-            if (typeof event.ConfirmedRegistrationsCount === "undefined") row.push(null);
-            else row.push(event.ConfirmedRegistrationsCount);
-            break;
-          case "CheckedInAttendeesNumber":
-            if (typeof event.CheckedInAttendeesNumber === "undefined") row.push(null);
-            else row.push(event.CheckedInAttendeesNumber);
-            break;
-          default:
-        }
+              break;
+            case "PendingRegistrationsCount":
+              if (typeof event.PendingRegistrationsCount === "undefined") row.push(null);
+              else row.push(event.PendingRegistrationsCount);
+              break;
+            case "ConfirmedRegistrationsCount":
+              if (typeof event.ConfirmedRegistrationsCount === "undefined") row.push(null);
+              else row.push(event.ConfirmedRegistrationsCount);
+              break;
+            case "CheckedInAttendeesNumber":
+              if (typeof event.CheckedInAttendeesNumber === "undefined") row.push(null);
+              else row.push(event.CheckedInAttendeesNumber);
+              break;
+            default:
+          }
+        });
+        rows.push({ values: row });
       });
-      rows.push({ values: row });
-    });
+
+      skip += Number(request.configParams.Paging);
+      if (events.Events.length < Number(request.configParams.Paging)) {
+        break;
+      }
+    }
   } else if (request.configParams.resource == "auditLog") {
     // AUDIT LOG, To be completed
+    var skip = 0,
+      count = 0;
     var startDate = request.dateRange.startDate,
       endDate = request.dateRange.endDate;
     var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
 
-    var auditLogEndpoint = API_PATHS.accounts + account.Id + "/auditLogItems/?StartDate=" + startDate + "&EndDate=" + endDate;
+    while (true) {
+      var auditLogEndpoint =
+        API_PATHS.accounts +
+        account.Id +
+        "/auditLogItems/?StartDate=" +
+        startDate +
+        "&EndDate=" +
+        endDate +
+        "&$skip=" +
+        skip.toString() +
+        "&$top=" +
+        request.configParams.Paging;
 
-    var auditLogItems = _fetchAPI(auditLogEndpoint, token);
-    auditLogItems.Items.forEach(function(AuditItem) {
-      var row = [];
-      selectedDimensionsMetrics.forEach(function(field) {
-        switch (field.name) {
-          case "AccountIdMain3":
-            row.push(accounts.Id);
-            break;
-          case "ContactId":
-            if (typeof AuditItem.Contact === "undefined") row.push(null);
-            else row.push(AuditItem.Contact.Id);
-            break;
-          case "Timestamp":
-            if (typeof AuditItem.Contact === "undefined") row.push(null);
-            else row.push(AuditItem.Timestamp);
-            break;
-          case "FirstName":
-            if (typeof AuditItem.FirstName === "undefined") row.push(null);
-            else row.push(AuditItem.FirstName);
-            break;
-          case "LastName":
-            if (typeof AuditItem.LastName === "undefined") row.push(null);
-            else row.push(AuditItem.LastName);
-            break;
-          case "Organization":
-            if (typeof AuditItem.Organization === "undefined" || !AuditItem.Organization) row.push("N/A");
-            else row.push(AuditItem.Organization);
-            break;
-          case "Email":
-            if (typeof AuditItem.Email === "undefined") row.push(null);
-            else row.push(AuditItem.Email);
-            break;
-          case "Message":
-            if (typeof AuditItem.Message === "undefined") row.push(null);
-            else row.push(AuditItem.Message);
-            break;
-          case "AuditLogId":
-            if (typeof AuditItem.Message === "undefined") row.push(null);
-            else row.push(AuditItem.Id);
-            break;
-          default:
-        }
+      var auditLogItems = _fetchAPI(auditLogEndpoint, token);
+      auditLogItems.Items.forEach(function(AuditItem) {
+        var row = [];
+        selectedDimensionsMetrics.forEach(function(field) {
+          switch (field.name) {
+            case "AccountIdMain3":
+              row.push(accounts.Id);
+              break;
+            case "ContactId":
+              if (typeof AuditItem.Contact === "undefined") row.push(null);
+              else row.push(AuditItem.Contact.Id);
+              break;
+            case "Timestamp":
+              if (typeof AuditItem.Contact === "undefined") row.push(null);
+              else row.push(AuditItem.Timestamp);
+              break;
+            case "FirstName":
+              if (typeof AuditItem.FirstName === "undefined") row.push(null);
+              else row.push(AuditItem.FirstName);
+              break;
+            case "LastName":
+              if (typeof AuditItem.LastName === "undefined") row.push(null);
+              else row.push(AuditItem.LastName);
+              break;
+            case "Organization":
+              if (typeof AuditItem.Organization === "undefined" || !AuditItem.Organization) row.push("N/A");
+              else row.push(AuditItem.Organization);
+              break;
+            case "Email":
+              if (typeof AuditItem.Email === "undefined") row.push(null);
+              else row.push(AuditItem.Email);
+              break;
+            case "Message":
+              if (typeof AuditItem.Message === "undefined") row.push(null);
+              else row.push(AuditItem.Message);
+              break;
+            case "AuditLogId":
+              if (typeof AuditItem.Message === "undefined") row.push(null);
+              else row.push(AuditItem.Id);
+              break;
+            default:
+          }
+        });
+        rows.push({ values: row });
       });
-      rows.push({ values: row });
-    });
+
+      skip += Number(request.configParams.Paging);
+      if (auditLogItems.Items.length < Number(request.configParams.Paging)) {
+        break;
+      }
+    }
   } else if (request.configParams.resource == "invoices") {
     var skip = 0,
       count = 0;
