@@ -661,14 +661,15 @@ wa_connector.getData = function(request) {
               row.push(value);
               break;
             }
-            case "IsProfilePublic": {
+            case "AccessToProfileByOthers": {
+              var value = "";
               for (var i = 0; i < member.FieldValues.length; i++) {
                 if (member.FieldValues[i].SystemCode == "AccessToProfileByOthers") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
+                  value = member.FieldValues[i].Value;
                   break;
                 }
               }
+              row.push(value);
               break;
             }
             case "MemberBundleIdOrEmail": {

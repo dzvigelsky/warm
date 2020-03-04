@@ -407,26 +407,8 @@ var WASchema = {
       }
     },
     {
-      name: "IsProfilePublic",
+      name: "AccessToProfileByOthers",
       label: "Access to profile by others",
-      dataType: "BOOLEAN",
-      semantics: {
-        conceptType: "DIMENSION",
-        semanticType: "BOOLEAN"
-      }
-    },
-    {
-      name: "DetailsToShow",
-      label: "Details to show",
-      dataType: "STRING",
-      semantics: {
-        conceptType: "DIMENSION",
-        semanticType: "TEXT"
-      }
-    },
-    {
-      name: "IsPhotoAlbumsEnabled",
-      label: "Photo albums enabled",
       dataType: "BOOLEAN",
       semantics: {
         conceptType: "DIMENSION",
