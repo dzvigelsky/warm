@@ -26,7 +26,7 @@ var wa_connector = wa_connector || {}; // creates the connector Class, which wil
 var API_PATHS = {
   // Api path that will be called in the getData function
   auth: "https://oauth.wildapricot.org/auth/token",
-  accounts: "https://api.wildapricot.org/v2.1/accounts/"
+  accounts: "https://api.wildapricot.org/v2.2/accounts/"
 };
 
 var cc = DataStudioApp.createCommunityConnector();
@@ -672,7 +672,7 @@ wa_connector.getData = function(request) {
               break;
             }
             case "MemberBundleIdOrEmail": {
-              var value = member.Email || "";
+              var value = "";
               for (var i = 0; i < member.FieldValues.length; i++) {
                 if (member.FieldValues[i].SystemCode == "BundleId") {
                   value = member.FieldValues[i].Value;
