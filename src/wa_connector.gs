@@ -930,7 +930,7 @@ wa_connector.getData = function(request) {
         selectedDimensionsMetrics.forEach(function(field) {
           switch (field.name) {
             case "AccountIdMain4":
-              row.push(invoices.Id);
+              row.push(invoice.Id);
               break;
             case "Id":
               if (typeof invoice.DocumentNumber === "undefined") row.push(null);

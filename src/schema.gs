@@ -25,7 +25,7 @@ var WASchema = {
   account: [
     {
       name: "Id",
-      label: "Account Number",
+      label: "Account ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -53,7 +53,7 @@ var WASchema = {
   contacts: [
     {
       name: "MemberId",
-      label: "Member Id",
+      label: "User Id",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -580,7 +580,7 @@ var WASchema = {
     },
     {
       name: "AccountIdMain3",
-      label: "User ID",
+      label: "Account ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -598,7 +598,7 @@ var WASchema = {
     },
     {
       name: "ContactId",
-      label: "Contact ID",
+      label: "User ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -652,7 +652,7 @@ var WASchema = {
   invoices: [
     {
       name: "AccountIdMain4",
-      label: "User ID",
+      label: "Account ID",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
@@ -696,7 +696,7 @@ var WASchema = {
     },
     {
       name: "ContactId",
-      label: "Contact Id",
+      label: "User Id",
       dataType: "NUMBER",
       semantics: {
         conceptType: "DIMENSION"
