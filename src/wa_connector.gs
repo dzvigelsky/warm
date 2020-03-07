@@ -26,7 +26,7 @@ var wa_connector = wa_connector || {}; // creates the connector Class, which wil
 var API_PATHS = {
   // Api path that will be called in the getData function
   auth: "https://oauth.wildapricot.org/auth/token",
-  accounts: "https://api.wildapricot.org/v2.2/accounts/"
+  accounts: "https://api.wildapricot.org/v2.1/accounts/"
 };
 
 var cc = DataStudioApp.createCommunityConnector();
@@ -971,7 +971,7 @@ wa_connector.getData = function(request) {
               row.push(invoice.Value);
               break;
             case "EventId":
-              if (invoice.OrderType === "EventRegistration") {
+              if (invoice.OrderType === "EventRegistration" && "EventRegistration" in invoice) {
                 var eventRegistrationEndpoint = API_PATHS.accounts + account.Id + "/eventregistrations/" + invoice.EventRegistration.Id;
                 var eventRegistration = _fetchAPI(eventRegistrationEndpoint, token);
                 row.push(eventRegistration.Event.Id);
