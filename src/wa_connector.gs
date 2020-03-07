@@ -752,6 +752,9 @@ wa_connector.getData = function(request) {
             if (typeof memberLevel.Description === "undefined") row.push(null);
             else row.push(memberLevel.Description);
             break;
+          case "MembershipType":
+            if (typeof memberLevel.Type === "undefined") row.push(null);
+            else row.push(memberLevel.Type);
           default:
         }
       });
