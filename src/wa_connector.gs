@@ -26,7 +26,7 @@ var wa_connector = wa_connector || {}; // creates the connector Class, which wil
 var API_PATHS = {
   // Api path that will be called in the getData function
   auth: "https://oauth.wildapricot.org/auth/token",
-  accounts: "https://api.wildapricot.org/v2.2/accounts/"
+  accounts: "https://api.wildapricot.org/v2.1/accounts/"
 };
 
 var cc = DataStudioApp.createCommunityConnector();
