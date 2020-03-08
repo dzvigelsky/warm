@@ -478,6 +478,15 @@ var WASchema = {
         conceptType: "DIMENSION",
         semanticType: "TEXT"
       }
+    },
+    {
+      name: "MembershipType",
+      label: "Membership Type",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "TEXT"
+      }
     }
   ],
 
