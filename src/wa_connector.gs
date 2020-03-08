@@ -459,18 +459,15 @@ wa_connector.getData = function(request) {
             case "Groupparticipation":
               var result = "";
               member.FieldValues.forEach(function(e) {
-                if (e.SystemCode == "Groups") {
-                  if (e.Value.length > 1) {
-                    for (var j = 0; j < e.Value.Length; j++) {
-                      result += e.Value[j]["Label"] == undefined ? null : e.Value[j]["Label"];
-                      result += j == e.Value.Length - 1 ? "" : ", ";
-                    }
-                  } else if (e.Value.length == 1) {
-                    result = e.Value[0]["Label"] ? e.Value[0]["Label"] : null;
+                if (e.SystemCode === "Groups") {
+                  var values = e.Value;
+                  for (var j = 0; j < values.length; j++) {
+                    var value = values[j].Label;
+                    result += (value || null) + ", ";
                   }
                 }
               });
-              row.push(result);
+              row.push(result.substring(0, result.length - 2));
               break;
             case "isArchived":
               for (var i = 0; i < member.FieldValues.length; i++) {
