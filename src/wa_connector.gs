@@ -28,6 +28,7 @@ var API_PATHS = {
   auth: "https://oauth.wildapricot.org/auth/token",
   accounts: "https://api.wildapricot.org/v2.1/accounts/"
 };
+var token;
 
 var cc = DataStudioApp.createCommunityConnector();
 // ----------------------------------
@@ -236,8 +237,9 @@ wa_connector.getConfig = function(request) {
 
 // Written by Edmond @2019 for Community Connector v1.3, added in custom, dynamic schema that accounts for custom fields (custom request)
 function custom(request) {
-  var cc = DataStudioApp.createCommunityConnector();
-  var token = _getAccessToken(request.configParams.apikey);
+  if (!token) {
+    token = _getAccessToken(request.configParams.apikey);
+  }
   var account = _fetchAPI(API_PATHS.accounts, token)[0];
   var contactfieldsEndpoint = API_PATHS.accounts + account.Id + "/contactfields?showSectionDividers=false";
   var arr = [map_schema("account_id", "AccountId")];
@@ -308,11 +310,34 @@ function map_schema(ft_in, fn_in) {
 }
 
 wa_connector.getSchema = function(request) {
-  if (request.configParams.resource == "custom") {
-    WASchema["custom"] = custom(request);
-    return { schema: WASchema["custom"] };
+  var isSchemaCustom = request.configParams.resource === "custom";
+  var schema = isSchemaCustom ? custom(request) : WASchema[request.configParams.resource];
+  var doesSchemaHaveCurrency = false;
+
+  for (var i = 0; i < schema.length; i++) {
+    var schemaItem = schema[i];
+    if ("semanticGroup" in schemaItem.semantics && schemaItem.semantics.semanticGroup === "CURRENCY") {
+      doesSchemaHaveCurrency = true;
+      break;
+    }
   }
-  return { schema: WASchema[request.configParams.resource] };
+
+  if (doesSchemaHaveCurrency) {
+    if (!token) {
+      token = _getAccessToken(request.configParams.apikey);
+    }
+    var account = _fetchAPI(API_PATHS.accounts, token)[0];
+    var currencyCode = account.Currency.Code;
+
+    for (var i = 0; i < schema.length; i++) {
+      var schemaItem = schema[i];
+      if ("semanticGroup" in schemaItem.semantics && schemaItem.semantics.semanticGroup === "CURRENCY") {
+        schemaItem.semantics.semanticType = "CURRENCY_" + currencyCode.toUpperCase();
+        break;
+      }
+    }
+  }
+  return { schema: schema };
 };
 
 wa_connector.getData = function(request) {
@@ -322,7 +347,9 @@ wa_connector.getData = function(request) {
   field_maps["AccountId"] = "account_id";
   var rows = [];
   var schema = WASchema[request.configParams.resource];
-  var token = _getAccessToken(request.configParams.apikey);
+  if (!token) {
+    token = _getAccessToken(request.configParams.apikey);
+  }
   var account = _fetchAPI(API_PATHS.accounts, token)[0];
   if (request.configParams.resource == "custom") {
     var contactfieldsEndpoint = API_PATHS.accounts + account.Id + "/contactfields?showSectionDividers=false";
