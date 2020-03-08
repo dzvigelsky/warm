@@ -281,7 +281,7 @@ var WASchema = {
       }
     },
     {
-      name: "RecievingEMailsDisabled",
+      name: "ReceivingEmailsDisabled",
       label: "Receiving emails disabled",
       dataType: "BOOLEAN",
       semantics: {

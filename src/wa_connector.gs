@@ -527,7 +527,7 @@ wa_connector.getData = function(request) {
               break;
             case "ReceivingEmailsDisabled":
               for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "ReceiveEventReminders") {
+                if (member.FieldValues[i].SystemCode == "RecievingEMailsDisabled") {
                   if (member.FieldValues[i].Value == true) row.push(true);
                   else row.push(false);
                   break;
