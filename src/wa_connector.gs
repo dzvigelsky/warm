@@ -100,6 +100,12 @@ wa_connector.getConfig = function(request) {
         .newOptionBuilder()
         .setLabel("Invoices")
         .setValue("invoices")
+    )
+    .addOption(
+      config
+        .newOptionBuilder()
+        .setLabel("Sent emails")
+        .setValue("sentEmails")
     );
 
   config
@@ -110,8 +116,10 @@ wa_connector.getConfig = function(request) {
   var shouldShowContactFields = !isFirstRequest && (configParams.resource === "contacts" || configParams.resource === "custom");
   var shouldShowInvoicesFields = !isFirstRequest && configParams.resource === "invoices";
   var shouldShowAuditLogFields = !isFirstRequest && configParams.resource === "auditLog";
+  var shouldShowsentEmailsFields = !isFirstRequest && configParams.resource === "sentEmails";
   var shouldShowEventFields = !isFirstRequest && configParams.resource === "event";
-  var shouldShowPageField = shouldShowContactFields || shouldShowInvoicesFields || shouldShowAuditLogFields || shouldShowEventFields;
+  var shouldShowPageField =
+    shouldShowContactFields || shouldShowInvoicesFields || shouldShowAuditLogFields || shouldShowEventFields || shouldShowsentEmailsFields;
 
   if (shouldShowPageField) {
     config
@@ -1083,8 +1091,115 @@ wa_connector.getData = function(request) {
       } // exit when reached the end
       console.log("Number of apis used: " + count);
     }
+  } else if (request.configParams.resource == "sentEmails") {
+    var skip = 0,
+      count = 0;
+
+    while (true) {
+      var sentEmailsEndpoint = API_PATHS.accounts + account.Id + "/sentemails?$skip=" + skip + "&$top=" + request.configParams.Paging;
+      var emails = _fetchAPI(sentEmailsEndpoint, token);
+
+      emails.Emails.forEach(function(email) {
+        var row = [];
+        selectedDimensionsMetrics.forEach(function(field) {
+          switch (field.name) {
+            case "Id":
+              row.push(email.Id);
+              break;
+            case "Url":
+              if (typeof email.Url === "undefined") row.push(null);
+              else row.push(email.Url);
+              break;
+            case "SentDate":
+              if (typeof email.SentDate === "undefined") row.push(null);
+              else row.push(email.SentDate);
+              break;
+            case "Subject":
+              if (typeof email.Subject === "undefined") row.push(null);
+              else row.push(email.Subject);
+              break;
+            case "ReplyToName":
+              if (typeof email.ReplyToName === "undefined") row.push(null);
+              else row.push(email.ReplyToName);
+              break;
+            case "ReplyToAddress":
+              if (typeof email.ReplyToAddress === "undefined") row.push(null);
+              else row.push(email.ReplyToAddress);
+              break;
+            case "EmailType":
+              if (typeof email.Type === "undefined") row.push(null);
+              else row.push(email.Type);
+              break;
+            case "IsTrackingAllowed":
+              if (typeof email.IsTrackingAllowed === "undefined") row.push(null);
+              else row.push(email.IsTrackingAllowed);
+              break;
+            case "IsCopySentToAdmins":
+              if (typeof email.IsCopySentToAdmins === "undefined") row.push(null);
+              else row.push(email.IsCopySentToAdmins);
+              break;
+            case "SenderId":
+              row.push(email.SenderId);
+              break;
+            case "SenderName":
+              if (typeof email.SenderName === "undefined") row.push(null);
+              else row.push(email.SenderName);
+              break;
+            case "SenderType":
+              if (typeof email.SenderType === "undefined") row.push(null);
+              else row.push(email.SenderType);
+              break;
+            case "RecipientCount":
+              row.push(email.RecipientCount);
+              break;
+            case "ReadCount":
+              row.push(email.ReadCount);
+              break;
+            case "UniqueLinkClickCount":
+              row.push(email.UniqueLinkClickCount);
+              break;
+            case "SuccessfullySentCount":
+              row.push(email.SuccessfullySentCount);
+              break;
+            case "RecipientsThatClickedAnyLinkCount":
+              row.push(email.RecipientsThatClickedAnyLinkCount);
+              break;
+            case "FailedCount":
+              row.push(email.FailedCount);
+              break;
+            case "InProgress":
+              if (typeof email.InProgress === "undefined") row.push(null);
+              else row.push(email.InProgress);
+              break;
+            case "RecipientType":
+              var value = email.Recipient !== null ? email.Recipient.Type : null;
+              row.push(value);
+              break;
+            case "RecipientName":
+              var value = email.Recipient !== null ? email.Recipient.Name : null;
+              row.push(value);
+              break;
+            case "RecipientId":
+              var value = email.Recipient !== null ? email.Recipient.Id : null;
+              row.push(value);
+              break;
+            case "RecipientEmail":
+              var value = email.Recipient !== null ? email.Recipient.Email : null;
+              row.push(value);
+              break;
+            default:
+          }
+        });
+        rows.push({ values: row });
+      });
+
+      skip += Number(request.configParams.Paging);
+      if (emails.Emails.length < Number(request.configParams.Paging)) {
+        break;
+      }
+    }
   }
-  //  Logger.log(schema)
+
   return {
     schema: selectedDimensionsMetrics,
     rows: rows
