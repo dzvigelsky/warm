@@ -578,7 +578,7 @@ wa_connector.getData = function(request) {
             case "LastUpdated":
               var lastU = undefined;
               member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "lastUpdated") {
+                if (element.SystemCode == "LastUpdated") {
                   lastU = element.Value;
                 }
               });
