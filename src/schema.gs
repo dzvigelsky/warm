@@ -21,7 +21,6 @@
 // Contact NewPath Consulting for support at https://www.newpathconsulting.com
 
 var WASchema = {
-  // Account
   account: [
     {
       name: "Id",
@@ -49,7 +48,7 @@ var WASchema = {
       }
     }
   ],
-  // Contacts (Previously Members)
+  // previously members
   contacts: [
     {
       name: "MemberId",
@@ -172,7 +171,6 @@ var WASchema = {
       }
     },
     {
-      // define more schema depending on usage
       name: "Active",
       label: "IsActiveMember",
       dataType: "BOOLEAN",
@@ -218,8 +216,8 @@ var WASchema = {
       }
     },
     {
-      name: "IsDonor", // corresponds to code in getData
-      label: "Donor", // this is how it appears in GDS
+      name: "IsDonor",
+      label: "Donor",
       dataType: "BOOLEAN",
       semantics: {
         conceptType: "DIMENSION",
@@ -432,8 +430,6 @@ var WASchema = {
       }
     }
   ],
-
-  // Membership Levels Endpoint
   membershipLevels: [
     {
       name: "AccountIdMain1",
@@ -489,8 +485,6 @@ var WASchema = {
       }
     }
   ],
-
-  // Event
   event: [
     {
       name: "AccountIdMain2",
@@ -577,7 +571,6 @@ var WASchema = {
       }
     }
   ],
-  // AuditLog
   auditLog: [
     {
       name: "AuditLogId",
@@ -657,7 +650,6 @@ var WASchema = {
       }
     }
   ],
-  // INVOICES
   invoices: [
     {
       name: "AccountIdMain4",
@@ -767,6 +759,197 @@ var WASchema = {
       name: "EventId",
       label: "Event ID",
       dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    }
+  ],
+  sentEmails: [
+    {
+      name: "Id",
+      label: "Email ID",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "Url",
+      label: "Url",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "URL"
+      }
+    },
+    {
+      name: "SentDate",
+      label: "Sent date",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticGroup: "DATE_AND_TIME",
+        semanticType: "YEAR_MONTH_DAY_HOUR"
+      }
+    },
+    {
+      name: "Subject",
+      label: "Subject",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "ReplyToName",
+      label: "Replier name",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "ReplyToAddress",
+      label: "Replier email address",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "EmailType",
+      label: "Type",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "IsTrackingAllowed",
+      label: "Is tracking allowed",
+      dataType: "BOOLEAN",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "BOOLEAN"
+      }
+    },
+    {
+      name: "IsCopySentToAdmins",
+      label: "Is copy sent to admin",
+      dataType: "BOOLEAN",
+      semantics: {
+        conceptType: "DIMENSION",
+        semanticType: "BOOLEAN"
+      }
+    },
+    {
+      name: "SenderId",
+      label: "Sender ID",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "SenderName",
+      label: "Sender name",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "SenderType",
+      label: "Sender type",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientCount",
+      label: "Number of recipients",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "ReadCount",
+      label: "Times read",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "UniqueLinkClickCount",
+      label: "Number of unique links",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "SuccessfullySentCount",
+      label: "Number of succesful sends",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientsThatClickedAnyLinkCount",
+      label: "Recipients that clicked a link",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "FailedCount",
+      label: "Number of failed sends",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "InProgress",
+      label: "Is in progress",
+      dataType: "BOOLEAN",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientType",
+      label: "Recipient type",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientName",
+      label: "Recipient name",
+      dataType: "STRING",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientId",
+      label: "Recipient ID",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
+    },
+    {
+      name: "RecipientEmail",
+      label: "Recipient email",
+      dataType: "STRING",
       semantics: {
         conceptType: "DIMENSION"
       }
