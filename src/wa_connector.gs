@@ -211,7 +211,9 @@ wa_connector.getConfig = function(request) {
   var isResourceEmpty = isFirstRequest || configParams.resource === undefined || configParams.resource === null;
   var isApiKeyEmpty = isFirstRequest || configParams.apikey === undefined || configParams.apikey === null;
   var isPagingEmpty = isFirstRequest || configParams.Paging === undefined || configParams.Paging === null;
-  var isDateRangeRequired = !isFirstRequest && (configParams.resource === "auditLog" || configParams.resource === "invoices");
+  var isDateRangeRequired =
+    !isFirstRequest &&
+    (configParams.resource === "auditLog" || configParams.resource === "invoices" || configParams.resource === "contacts");
   var canProceedToNextStep = !isApiKeyEmpty && !isResourceEmpty && (!shouldShowPageField || (shouldShowPageField && !isPagingEmpty));
 
   if (isDateRangeRequired) {
