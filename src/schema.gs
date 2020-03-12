@@ -859,8 +859,8 @@ var WASchema = {
       }
     },
     {
-      name: "SenderType",
-      label: "Sender type",
+      name: "SendingType",
+      label: "Sending type",
       dataType: "STRING",
       semantics: {
         conceptType: "DIMENSION"
