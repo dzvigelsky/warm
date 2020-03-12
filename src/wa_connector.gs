@@ -1145,9 +1145,9 @@ wa_connector.getData = function(request) {
               if (typeof email.SenderName === "undefined") row.push(null);
               else row.push(email.SenderName);
               break;
-            case "SenderType":
-              if (typeof email.SenderType === "undefined") row.push(null);
-              else row.push(email.SenderType);
+            case "SendingType":
+              if (typeof email.SendingType === "undefined") row.push(null);
+              else row.push(email.SendingType);
               break;
             case "RecipientCount":
               row.push(email.RecipientCount);
