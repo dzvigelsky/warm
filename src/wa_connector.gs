@@ -116,10 +116,12 @@ wa_connector.getConfig = function(request) {
   var shouldShowContactFields = !isFirstRequest && (configParams.resource === "contacts" || configParams.resource === "custom");
   var shouldShowInvoicesFields = !isFirstRequest && configParams.resource === "invoices";
   var shouldShowAuditLogFields = !isFirstRequest && configParams.resource === "auditLog";
-  var shouldShowsentEmailsFields = !isFirstRequest && configParams.resource === "sentEmails";
+  var shouldShowSentEmailsFields = !isFirstRequest && configParams.resource === "sentEmails";
   var shouldShowEventFields = !isFirstRequest && configParams.resource === "event";
   var shouldShowPageField =
-    shouldShowContactFields || shouldShowInvoicesFields || shouldShowAuditLogFields || shouldShowEventFields || shouldShowsentEmailsFields;
+    shouldShowContactFields || shouldShowInvoicesFields || shouldShowAuditLogFields || shouldShowEventFields || shouldShowSentEmailsFields;
+  var shouldShowFilterField = shouldShowContactFields || shouldShowEventFields || shouldShowSentEmailsFields;
+  var shouldShowCountField = shouldShowContactFields;
 
   if (shouldShowPageField) {
     config
@@ -184,6 +186,48 @@ wa_connector.getConfig = function(request) {
           .setLabel("4000")
           .setValue("4000")
       );
+
+    config
+      .newInfo()
+      .setId("PagingErrorLabel")
+      .setText("Page size is required.");
+  }
+
+  if (shouldShowFilterField) {
+    var contactsFilterText =
+      "Create a filter clause to return only a subset of contact records to speed up processing in Google Data Studio. See https://gethelp.wildapricot.com/en/articles/502#filtering for more details.";
+    var eventsFilterText =
+      "Create a filter clause to return only a subset of event records to speed up processing in Google Data Studio. See https://gethelp.wildapricot.com/en/articles/499-events-admin-api-call#filtering for more details.";
+    var sentEmailsFilterText =
+      "Allowed filter fields (allowed operations):\n\nSentDate (ge, le),\nSenderId (eq) - ID of sender,\nOriginType (eq) - see SentEmail.Origin.OriginType,\nSendingType (eq) -SentEmail.SendingType (Automatic or Manual)\n\nThe AND boolean operator supported only for this filter.\n\n...&$filter=SentDate ge 2018-05-01 - will return records sent on or after May 1st, 2018";
+    var filterText = contactsFilterText;
+
+    if (shouldShowEventFields) {
+      filterText = eventsFilterText;
+    } else if (shouldShowSentEmailsFields) {
+      filterText = sentEmailsFilterText;
+    }
+
+    config
+      .newTextInput()
+      .setId("filter")
+      .setName("Filter")
+      .setAllowOverride(true)
+      .setHelpText(filterText);
+
+    config
+      .newInfo()
+      .setId("FilterLabel")
+      .setText(filterText);
+  }
+
+  if (shouldShowCountField) {
+    config
+      .newCheckbox()
+      .setId("countOnly")
+      .setName("Return count only")
+      .setAllowOverride(true)
+      .setHelpText("If checked, only the total record count will be returned in the report.");
   }
 
   if (shouldShowInvoicesFields) {
@@ -196,11 +240,6 @@ wa_connector.getConfig = function(request) {
   }
 
   if (shouldShowContactFields) {
-    config
-      .newInfo()
-      .setId("PagingErrorLabel")
-      .setText("Page size is required.");
-
     config
       .newCheckbox()
       .setId("archived")
@@ -394,12 +433,12 @@ wa_connector.getData = function(request) {
     });
     rows.push({ values: row });
   } else if (request.configParams.resource == "contacts") {
-    // MEMBER Endpoint
     var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
+    var userFilter = typeof request.configParams.filter === "string" ? request.configParams.filter : "";
     var skip = 0,
       count = 0;
-    //    request.configParams.Paging = request.configParams.Paging == "ALL"? "4001" : request.configParams.Paging;
+
     while (true) {
       var filter = request.configParams.archived ? "" : "Archived eq false"; // if archived checkbox is true return everything, otherwise exclude Archived contacts
       if (request.configParams.membership) {
@@ -409,356 +448,379 @@ wa_connector.getData = function(request) {
         }
         filter += "Member eq true";
       }
+      if (filter.length > 0 && userFilter.length > 0) {
+        filter += " AND ";
+      }
+      filter += userFilter;
 
       var membersEndpoint =
         API_PATHS.accounts +
         account.Id +
         "/Contacts?$async=false&$filter=" +
         filter +
-        "&$skip=" +
-        skip.toString() +
-        "&$top=" +
-        request.configParams.Paging;
+        (request.configParams.countOnly ? "" : "&$skip=" + skip.toString()) +
+        (request.configParams.countOnly ? "" : "&$top=" + request.configParams.Paging) +
+        (request.configParams.countOnly ? "&$count=true" : "");
+
       var members = _fetchAPI(membersEndpoint, token); // returns object that contains data from the API call
       console.log(membersEndpoint);
-      var n = members.Contacts.length;
+      var n = request.configParams.countOnly ? 1 : members.Contacts.length;
       count += 1;
       console.log(count + " " + n);
-      members.Contacts.forEach(function(member) {
-        var row = []; // create empty array to hold fields
+
+      if (request.configParams.countOnly) {
+        var row = [];
         selectedDimensionsMetrics.forEach(function(field) {
           switch (field.name) {
-            case "AccountIdMain":
-              row.push(accounts.Id);
+            case "Count":
+              row.push(members.Count);
               break;
-            case "MemberId":
-              row.push(member.Id.toString());
-              break;
-            case "FirstName":
-              if (typeof member.FirstName === "undefined") row.push(null);
-              else row.push(member.FirstName);
-              break;
-            case "LastName":
-              if (typeof member.LastName === "undefined") row.push(null);
-              else row.push(member.LastName);
-              break;
-            case "Email":
-              if (typeof member.Email === "undefined") row.push(null);
-              else row.push(member.Email);
-              break;
-            case "DisplayName":
-              if (typeof member.DisplayName === "undefined") row.push(null);
-              else row.push(member.DisplayName);
-              break;
-            case "Organization":
-              if (typeof member.Organization === "undefined") row.push(null);
-              row.push(member.Organization);
-              break;
-            case "MembershipLevelName":
-              if (typeof member.MembershipLevel === "undefined") row.push(null);
-              else row.push(member.MembershipLevel.Name);
-              break;
-            case "MembershipLevelId":
-              if (typeof member.MembershipLevel === "undefined") row.push(null);
-              else row.push(member.MembershipLevel.Id);
-              break;
-            case "MembershipEnabled":
-              row.push(member.MembershipEnabled);
-              break;
-            case "IsAccountAdministrator":
-              if (typeof member.IsAccountAdministrator === "undefined") row.push(null);
-              else row.push(member.IsAccountAdministrator);
-              break;
-            case "Status":
-              if (typeof member.MembershipLevel === "undefined") row.push(null);
-              else row.push(member.Status);
-              break;
-            case "TermsOfUseAccepted":
-              if (typeof member.TermsOfUseAccepted === "undefined") row.push(null);
-              else row.push(member.TermsOfUseAccepted);
-              break;
-            case "Active":
-              if (member.Status == "Active") row.push(true);
-              else row.push(false);
-              break;
-            case "Lapsed":
-              if (member.Status == "Lapsed") row.push(true);
-              else row.push(false);
-              break;
-            case "PendingNew":
-              if (member.Status == "PendingNew") row.push(true);
-              else row.push(false);
-              break;
-            case "PendingRenewal":
-              if (member.Status == "PendingRenewal") row.push(true);
-              else row.push(false);
-              break;
-            case "Groupparticipation":
-              var result = "";
-              member.FieldValues.forEach(function(e) {
-                if (e.SystemCode === "Groups") {
-                  var values = e.Value;
-                  for (var j = 0; j < values.length; j++) {
-                    var value = values[j].Label;
-                    result += (value || null) + ", ";
-                  }
-                }
-              });
-              row.push(result.substring(0, result.length - 2));
-              break;
-            case "isArchived":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "IsArchived") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                }
-              }
-              break;
-            case "IsMember":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "IsMember") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "IsSuspendedMember":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "IsSuspendedMember") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "ReceiveEventReminders":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "ReceiveEventReminders") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "ReceiveNewsletters":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "ReceiveEventReminders") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "EmailDisabled":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "EmailDisabled") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "ReceivingEmailsDisabled":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "RecievingEMailsDisabled") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                  break;
-                }
-              }
-              break;
-            case "Balance":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "Balance") {
-                  row.push(member.FieldValues[i].Value);
-                  break;
-                }
-              }
-              break;
-            case "TotalDonated":
-              var totalD = 0;
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "TotalDonated") {
-                  totalD = element.Value;
-                }
-              });
-              row.push(totalD);
-              break;
-            case "LastUpdated":
-              var lastU = undefined;
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "LastUpdated") {
-                  lastU = element.Value;
-                }
-              });
-              row.push(lastU);
-              break;
-            case "LastUpdatedBy":
-              var lastUB = undefined;
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "LastUpdatedBy") {
-                  lastUB = element.Value;
-                }
-              });
-              row.push(lastUB);
-              break;
-            case "CreationDate":
-              var creationD = "";
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "CreationDate") {
-                  creationD = element.Value;
-                }
-              });
-              row.push(creationD);
-              break;
-            case "LastLoginDate":
-              var lastLD = "";
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "LastLoginDate") {
-                  lastLD = element.Value;
-                }
-              });
-              row.push(lastLD);
-              break;
-            case "AdminRole":
-              var adminR = "Not An Account Administrator";
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "AdminRole") {
-                  if (element.Value.length != 0) {
-                    adminR = "Account Administrator (Full Access)";
-                  }
-                }
-              });
-              row.push(adminR);
-              break;
-            case "Notes":
-              var notes = "";
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "Notes") {
-                  notes = element.Value;
-                }
-              });
-              row.push(notes);
-              break;
-            case "Phone":
-              var phone = "";
-              member.FieldValues.forEach(function(element) {
-                if (element.SystemCode == "Phone") {
-                  phone = element.Value;
-                }
-              });
-              row.push(phone);
-              break;
-            case "IsEventAttendee":
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "IsEventAttendee") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                }
-              }
-              break;
-            case "IsDonor": {
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "IsDonor") {
-                  if (member.FieldValues[i].Value == true) row.push(true);
-                  else row.push(false);
-                }
-              }
-              break;
-            }
-            case "MemberSince": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode === "MemberSince") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "RenewalDue": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode === "RenewalDue") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "RenewalDateLastChanged": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode === "RenewalDateLastChanged") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "LevelLastChanged": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode === "LevelLastChanged") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "AccessToProfileByOthers": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "AccessToProfileByOthers") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "MemberBundleIdOrEmail": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "BundleId") {
-                  value = member.FieldValues[i].Value;
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
-            case "MemberRole": {
-              var value = "";
-              for (var i = 0; i < member.FieldValues.length; i++) {
-                if (member.FieldValues[i].SystemCode == "MemberRole") {
-                  value = member.FieldValues[i].Value || "";
-                  break;
-                }
-              }
-              row.push(value);
-              break;
-            }
             default:
+              row.push(null);
               break;
           }
         });
         rows.push({ values: row }); // final response
-      }); // Since we are iterating, then every possible field for the endpoint will be pushed to row list.
-
-      skip += Number(request.configParams.Paging);
-      if (n < Number(request.configParams.Paging)) {
         break;
+      } else {
+        members.Contacts.forEach(function(member) {
+          var row = []; // create empty array to hold fields
+          selectedDimensionsMetrics.forEach(function(field) {
+            switch (field.name) {
+              case "AccountIdMain":
+                row.push(accounts.Id);
+                break;
+              case "MemberId":
+                row.push(member.Id.toString());
+                break;
+              case "FirstName":
+                if (typeof member.FirstName === "undefined") row.push(null);
+                else row.push(member.FirstName);
+                break;
+              case "LastName":
+                if (typeof member.LastName === "undefined") row.push(null);
+                else row.push(member.LastName);
+                break;
+              case "Email":
+                if (typeof member.Email === "undefined") row.push(null);
+                else row.push(member.Email);
+                break;
+              case "DisplayName":
+                if (typeof member.DisplayName === "undefined") row.push(null);
+                else row.push(member.DisplayName);
+                break;
+              case "Organization":
+                if (typeof member.Organization === "undefined") row.push(null);
+                row.push(member.Organization);
+                break;
+              case "MembershipLevelName":
+                if (typeof member.MembershipLevel === "undefined") row.push(null);
+                else row.push(member.MembershipLevel.Name);
+                break;
+              case "MembershipLevelId":
+                if (typeof member.MembershipLevel === "undefined") row.push(null);
+                else row.push(member.MembershipLevel.Id);
+                break;
+              case "MembershipEnabled":
+                row.push(member.MembershipEnabled);
+                break;
+              case "IsAccountAdministrator":
+                if (typeof member.IsAccountAdministrator === "undefined") row.push(null);
+                else row.push(member.IsAccountAdministrator);
+                break;
+              case "Status":
+                if (typeof member.MembershipLevel === "undefined") row.push(null);
+                else row.push(member.Status);
+                break;
+              case "TermsOfUseAccepted":
+                if (typeof member.TermsOfUseAccepted === "undefined") row.push(null);
+                else row.push(member.TermsOfUseAccepted);
+                break;
+              case "Active":
+                if (member.Status == "Active") row.push(true);
+                else row.push(false);
+                break;
+              case "Lapsed":
+                if (member.Status == "Lapsed") row.push(true);
+                else row.push(false);
+                break;
+              case "PendingNew":
+                if (member.Status == "PendingNew") row.push(true);
+                else row.push(false);
+                break;
+              case "PendingRenewal":
+                if (member.Status == "PendingRenewal") row.push(true);
+                else row.push(false);
+                break;
+              case "Groupparticipation":
+                var result = "";
+                member.FieldValues.forEach(function(e) {
+                  if (e.SystemCode === "Groups") {
+                    var values = e.Value;
+                    for (var j = 0; j < values.length; j++) {
+                      var value = values[j].Label;
+                      result += (value || null) + ", ";
+                    }
+                  }
+                });
+                row.push(result.substring(0, result.length - 2));
+                break;
+              case "isArchived":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "IsArchived") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                  }
+                }
+                break;
+              case "IsMember":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "IsMember") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "IsSuspendedMember":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "IsSuspendedMember") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "ReceiveEventReminders":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "ReceiveEventReminders") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "ReceiveNewsletters":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "ReceiveEventReminders") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "EmailDisabled":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "EmailDisabled") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "ReceivingEmailsDisabled":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "RecievingEMailsDisabled") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                    break;
+                  }
+                }
+                break;
+              case "Balance":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "Balance") {
+                    row.push(member.FieldValues[i].Value);
+                    break;
+                  }
+                }
+                break;
+              case "TotalDonated":
+                var totalD = 0;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "TotalDonated") {
+                    totalD = element.Value;
+                  }
+                });
+                row.push(totalD);
+                break;
+              case "LastUpdated":
+                var lastU = undefined;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "LastUpdated") {
+                    lastU = element.Value;
+                  }
+                });
+                row.push(lastU);
+                break;
+              case "LastUpdatedBy":
+                var lastUB = undefined;
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "LastUpdatedBy") {
+                    lastUB = element.Value;
+                  }
+                });
+                row.push(lastUB);
+                break;
+              case "CreationDate":
+                var creationD = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "CreationDate") {
+                    creationD = element.Value;
+                  }
+                });
+                row.push(creationD);
+                break;
+              case "LastLoginDate":
+                var lastLD = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "LastLoginDate") {
+                    lastLD = element.Value;
+                  }
+                });
+                row.push(lastLD);
+                break;
+              case "AdminRole":
+                var adminR = "Not An Account Administrator";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "AdminRole") {
+                    if (element.Value.length != 0) {
+                      adminR = "Account Administrator (Full Access)";
+                    }
+                  }
+                });
+                row.push(adminR);
+                break;
+              case "Notes":
+                var notes = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "Notes") {
+                    notes = element.Value;
+                  }
+                });
+                row.push(notes);
+                break;
+              case "Phone":
+                var phone = "";
+                member.FieldValues.forEach(function(element) {
+                  if (element.SystemCode == "Phone") {
+                    phone = element.Value;
+                  }
+                });
+                row.push(phone);
+                break;
+              case "IsEventAttendee":
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "IsEventAttendee") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                  }
+                }
+                break;
+              case "IsDonor": {
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "IsDonor") {
+                    if (member.FieldValues[i].Value == true) row.push(true);
+                    else row.push(false);
+                  }
+                }
+                break;
+              }
+              case "MemberSince": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode === "MemberSince") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "RenewalDue": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode === "RenewalDue") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "RenewalDateLastChanged": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode === "RenewalDateLastChanged") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "LevelLastChanged": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode === "LevelLastChanged") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "AccessToProfileByOthers": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "AccessToProfileByOthers") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "MemberBundleIdOrEmail": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "BundleId") {
+                    value = member.FieldValues[i].Value;
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "MemberRole": {
+                var value = "";
+                for (var i = 0; i < member.FieldValues.length; i++) {
+                  if (member.FieldValues[i].SystemCode == "MemberRole") {
+                    value = member.FieldValues[i].Value || "";
+                    break;
+                  }
+                }
+                row.push(value);
+                break;
+              }
+              case "Count":
+                row.push(null);
+                break;
+              default:
+                break;
+            }
+          });
+          rows.push({ values: row }); // final response
+        }); // Since we are iterating, then every possible field for the endpoint will be pushed to row list.
+
+        skip += Number(request.configParams.Paging);
+        if (n < Number(request.configParams.Paging)) {
+          break;
+        }
       }
     }
     console.log("Number of API used: " + count);
   } else if (request.configParams.resource == "membershipLevels") {
-    // Membership Level, To be completed
     var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
     var membershipLevelsEndpoint = API_PATHS.accounts + account.Id + "/membershipLevels";
@@ -795,14 +857,22 @@ wa_connector.getData = function(request) {
       rows.push({ values: row });
     });
   } else if (request.configParams.resource == "event") {
-    // EVENT REGISTRATIONS, To be completed
     var skip = 0,
       count = 0;
     var accountsEndpoint = API_PATHS.accounts + account.Id;
     var accounts = _fetchAPI(accountsEndpoint, token);
+    var userFilter = typeof request.configParams.filter === "string" ? request.configParams.filter : "";
 
     while (true) {
-      var eventsEndpoint = API_PATHS.accounts + account.Id + "/events?$skip=" + skip.toString() + "&$top=" + request.configParams.Paging;
+      var eventsEndpoint =
+        API_PATHS.accounts +
+        account.Id +
+        "/events?$skip=" +
+        skip.toString() +
+        "&$top=" +
+        request.configParams.Paging +
+        "&$filter=" +
+        userFilter;
       var events = _fetchAPI(eventsEndpoint, token);
       events.Events.forEach(function(event) {
         var row = [];
@@ -870,7 +940,6 @@ wa_connector.getData = function(request) {
       }
     }
   } else if (request.configParams.resource == "auditLog") {
-    // AUDIT LOG, To be completed
     var skip = 0,
       count = 0;
     var startDate = request.dateRange.startDate,
@@ -1092,11 +1161,13 @@ wa_connector.getData = function(request) {
       console.log("Number of apis used: " + count);
     }
   } else if (request.configParams.resource == "sentEmails") {
+    var userFilter = typeof request.configParams.filter === "string" ? request.configParams.filter : "";
     var skip = 0,
       count = 0;
 
     while (true) {
-      var sentEmailsEndpoint = API_PATHS.accounts + account.Id + "/sentemails?$skip=" + skip + "&$top=" + request.configParams.Paging;
+      var sentEmailsEndpoint =
+        API_PATHS.accounts + account.Id + "/sentemails?$skip=" + skip + "&$top=" + request.configParams.Paging + "&$filter=" + userFilter;
       var emails = _fetchAPI(sentEmailsEndpoint, token);
 
       emails.Emails.forEach(function(email) {

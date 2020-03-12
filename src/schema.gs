@@ -428,6 +428,14 @@ var WASchema = {
       semantics: {
         conceptType: "DIMENSION"
       }
+    },
+    {
+      name: "Count",
+      label: "Count",
+      dataType: "NUMBER",
+      semantics: {
+        conceptType: "DIMENSION"
+      }
     }
   ],
   membershipLevels: [
